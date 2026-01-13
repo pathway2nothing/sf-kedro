@@ -1,0 +1,10 @@
+ipython>=8.10
+jupyterlab>=3.0
+notebook
+kedro~=1.1.1
+signalflow-trading==0.2.1
+signalflow-nn==0.2.1
+
+
+pyarrow
+kaleido
