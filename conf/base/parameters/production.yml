@@ -1,0 +1,27 @@
+  # conf/base/parameters/production.yml
+  # Production-specific parameters
+production:
+  model:
+    name: "signalflow_nn_gru"  # Registered model name in MLflow
+    stage: "Production"  # Production, Staging, or version number
+
+  strategy:
+    db_path: "data/07_model_output/strategy_prod.duckdb"
+    initial_capital: 10000.0
+    fee_rate: 0.001
+    slippage_pct: 0.001
+    strategy_id: "production_strategy"
+    data_key: "spot"
+    
+    entry_rules:
+      - type: "signal_entry"
+        base_position_size: 1000.0
+        use_probability_sizing: true
+        min_probability: 0.65  # Higher threshold for production
+        max_positions_per_pair: 1
+        allow_shorts: false
+    
+    exit_rules:
+      - type: "tp_sl"
+        take_profit_pct: 0.025
+        stop_loss_pct: 0.015

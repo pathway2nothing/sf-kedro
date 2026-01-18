@@ -1,0 +1,23 @@
+# conf/base/parameters/baseline.yml
+
+baseline:
+  strategy:
+    db_path: "data/07_model_output/strategy_baseline.duckdb"
+    initial_capital: 10000.0
+    fee_rate: 0.001
+    slippage_pct: 0.001
+    strategy_id: "baseline_strategy"
+    data_key: "spot"
+    
+    entry_rules:
+      - type: "signal_entry"
+        base_position_size: 1000.0
+        use_probability_sizing: false
+        min_probability: 0.0
+        max_positions_per_pair: 1
+        allow_shorts: false
+    
+    exit_rules:
+      - type: "tp_sl"
+        take_profit_pct: 0.02
+        stop_loss_pct: 0.02

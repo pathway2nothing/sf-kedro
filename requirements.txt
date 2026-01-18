@@ -8,3 +8,8 @@ signalflow-nn==0.2.1
 
 pyarrow
 kaleido
+plotly
+kedro-mlflow
+dagshub 
+mlflow
+kedro-datasets

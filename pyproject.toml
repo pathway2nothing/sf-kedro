@@ -58,3 +58,6 @@ exclude_lines = [
     "pragma: no cover",
     "raise NotImplementedError",
 ]
+
+[tool.kedro_telemetry]
+project_id = "455c4b21f6d7499ba15d922f41f386fa"

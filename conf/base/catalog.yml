@@ -1,4 +1,97 @@
-# Here you can define all your datasets by using simple YAML syntax.
-#
-# Documentation for this file format can be found in "The Data Catalog"
-# Link: https://docs.kedro.org/en/stable/data/data_catalog.html
+# conf/base/catalog.yml
+
+# Baseline namespace
+baseline.raw_signals:
+  type: pickle.PickleDataset
+  filepath: data/03_primary/baseline_raw_signals.pkl
+
+baseline.signal_metrics:
+  type: json.JSONDataset
+  filepath: data/08_reporting/baseline_signal_metrics.json
+
+baseline.backtest_metrics:
+  type: json.JSONDataset
+  filepath: data/08_reporting/baseline_backtest_metrics.json
+
+# ML validated namespace
+ml_validated.raw_signals:
+  type: pickle.PickleDataset
+  filepath: data/03_primary/ml_validated_raw_signals.pkl
+
+ml_validated.validation_features:
+  type: pickle.PickleDataset
+  filepath: data/04_feature/ml_validated_validation_features.pkl
+
+ml_validated.labeled_data:
+  type: pickle.PickleDataset
+  filepath: data/04_feature/ml_validated_labeled_data.pkl
+
+ml_validated.train_data:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/ml_validated_train_data.pkl
+
+ml_validated.val_data:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/ml_validated_val_data.pkl
+
+ml_validated.test_data:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/ml_validated_test_data.pkl
+
+ml_validated.validated_signals:
+  type: pickle.PickleDataset
+  filepath: data/06_models/ml_validated_validated_signals.pkl
+
+ml_validated.backtest_metrics:
+  type: json.JSONDataset
+  filepath: data/08_reporting/ml_validated_backtest_metrics.json
+
+# NN validated namespace
+nn_validated.raw_signals:
+  type: pickle.PickleDataset
+  filepath: data/03_primary/nn_validated_raw_signals.pkl
+
+nn_validated.validation_features:
+  type: pickle.PickleDataset
+  filepath: data/04_feature/nn_validated_validation_features.pkl
+
+nn_validated.labeled_data:
+  type: pickle.PickleDataset
+  filepath: data/04_feature/nn_validated_labeled_data.pkl
+
+nn_validated.train_data:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/nn_validated_train_data.pkl
+
+nn_validated.val_data:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/nn_validated_val_data.pkl
+
+nn_validated.test_data:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/nn_validated_test_data.pkl
+
+nn_validated.validated_signals:
+  type: pickle.PickleDataset
+  filepath: data/06_models/nn_validated_validated_signals.pkl
+
+nn_validated.backtest_metrics:
+  type: json.JSONDataset
+  filepath: data/08_reporting/nn_validated_backtest_metrics.json
+
+# Production namespace
+production.raw_signals:
+  type: pickle.PickleDataset
+  filepath: data/03_primary/production_raw_signals.pkl
+
+production.validation_features:
+  type: pickle.PickleDataset
+  filepath: data/04_feature/production_validation_features.pkl
+
+production.validated_signals:
+  type: pickle.PickleDataset
+  filepath: data/06_models/production_validated_signals.pkl
+
+production.backtest_metrics:
+  type: json.JSONDataset
+  filepath: data/08_reporting/production_backtest_metrics.json

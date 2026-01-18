@@ -1,0 +1,39 @@
+# conf/base/parameters/nn_validated.yml
+
+nn_validated:
+  nn_validator:
+    model:
+      encoder_type: "gru"
+      hidden_size: 128
+      num_layers: 2
+      dropout: 0.2
+      pooling_strategy: "attention"
+      num_classes: 3
+      
+    trainer:
+      max_epochs: 50
+      batch_size: 32
+      accelerator: "auto"
+      devices: 1
+      early_stopping_patience: 5
+
+  strategy:
+    db_path: "data/07_model_output/strategy_nn.duckdb"
+    initial_capital: 10000.0
+    fee_rate: 0.001
+    slippage_pct: 0.001
+    strategy_id: "nn_validated_strategy"
+    data_key: "spot"
+    
+    entry_rules:
+      - type: "signal_entry"
+        base_position_size: 1000.0
+        use_probability_sizing: true
+        min_probability: 0.6
+        max_positions_per_pair: 1
+        allow_shorts: false
+    
+    exit_rules:
+      - type: "tp_sl"
+        take_profit_pct: 0.02
+        stop_loss_pct: 0.02
