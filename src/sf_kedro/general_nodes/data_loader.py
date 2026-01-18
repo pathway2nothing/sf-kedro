@@ -44,7 +44,7 @@ def download_market_data(
     
     # Log to MLflow
     mlflow.log_params({
-        "data.pairs": ",".join(pairs),
+        "data.pairs": "[" + ", ".join(pairs) + "]",
         "data.start_date": start.isoformat(),
         "data.end_date": end.isoformat(),
         "data.num_pairs": len(pairs),

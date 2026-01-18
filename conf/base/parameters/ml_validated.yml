@@ -1,6 +1,14 @@
 # conf/base/parameters/ml_validated.yml
 
 ml_validated:
+
+  detector:
+    name: "sma_cross"
+    params:
+      fast_period: 60
+      slow_period: 720
+      price_col: "close"
+
   ml_validator:
     model_type: "random_forest"
     model_params:

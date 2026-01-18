@@ -6,6 +6,8 @@ data:
     - BTCUSDT
     - ETHUSDT
     - SOLUSDT
+    - BNBUSDT
+    - XRPUSDT
   date_range:
     start:
       year: 2025
@@ -17,45 +19,3 @@ data:
       day: 31
   storage_path: "data/01_raw/market.duckdb"
 
-detector:
-  name: "sma_cross"
-  config:
-    fast_period: 10
-    slow_period: 20
-    price_col: "close"
-
-features:
-  extractors:
-    - name: "custom/log_return"
-      price_col: "close"
-      out_col: "log_ret_1"
-      period: 1
-    - name: "custom/log_return"
-      price_col: "close"
-      out_col: "log_ret_2"
-      period: 2
-    - name: "custom/log_return"
-      price_col: "close"
-      out_col: "log_ret_4"
-      period: 4
-    - name: "custom/log_return"
-      price_col: "close"
-      out_col: "log_ret_8"
-      period: 8
-    - name: "custom/log_return"
-      price_col: "close"
-      out_col: "log_ret_16"
-      period: 16
-    - name: "custom/log_return"
-      price_col: "close"
-      out_col: "log_ret_32"
-      period: 32
-
-labeler:
-  name: "fixed_horizon"
-  horizon: 10
-  include_meta: true
-
-split:
-  train_ratio: 0.7
-  val_ratio: 0.15

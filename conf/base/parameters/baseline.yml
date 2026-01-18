@@ -1,6 +1,14 @@
 # conf/base/parameters/baseline.yml
 
 baseline:
+
+  detector:
+    name: "sma_cross"
+    params:
+      fast_period: 60
+      slow_period: 720
+      price_col: "close"
+
   strategy:
     db_path: "data/07_model_output/strategy_baseline.duckdb"
     initial_capital: 10000.0

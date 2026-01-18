@@ -21,19 +21,16 @@ def detect_signals(
     Returns:
         Detected signals
     """
-    # Create detector directly based on name
     detector_name = detector_config.get('name')
     
-    detector_type = sf.core.registry.get(component_type=sf.core.SfComponentType.DETECTOR, name=detector_name)
-    detector = detector_type(**detector_config)
-    # Run detection
+    detector_type = sf.core.default_registry.get(component_type=sf.core.SfComponentType.DETECTOR, name=detector_name)
+    detector: sf.detector.SignalDetector = detector_type(**detector_config.get('params', {}))
     raw_data_view = sf.core.RawDataView(raw_data)
-    signals = detector.run(raw_data_view)
+    signals = detector.run(raw_data_view=raw_data_view, context=None)
     
-    # Log detector info
     mlflow.log_params({
-        "detector.type": detector.__class__.__name__,
-        "detector.threshold": detector_config.get('threshold', 0.01),
+        "detector.type": detector_name,
+        "detector.params": detector_config.get('params', {}),
     })
     
     return signals

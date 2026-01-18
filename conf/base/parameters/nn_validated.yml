@@ -1,6 +1,14 @@
 # conf/base/parameters/nn_validated.yml
 
 nn_validated:
+
+  detector:
+    name: "sma_cross"
+    params:
+      fast_period: 60
+      slow_period: 720
+      price_col: "close"
+
   nn_validator:
     model:
       encoder_type: "gru"

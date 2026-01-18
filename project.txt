@@ -1,0 +1,869 @@
+# SignalFlow Context [v0.x.x]
+# StripDocs=True
+
+# FILE: src/sf_kedro/__init__.py
+----------------------------------------
+__version__ = '0.1'
+
+# FILE: src/sf_kedro/custom_modules/__init__.py
+----------------------------------------
+
+
+# FILE: src/sf_kedro/general_nodes/__init__.py
+----------------------------------------
+from .data_loader import download_market_data, load_raw_data_from_storage
+from .feature_builder import extract_validation_features, create_feature_set
+from .signal_processor import detect_signals, calculate_signal_metrics, validate_signals
+from .labeling import create_labels, split_train_val_test
+from .validator_factory import create_sklearn_validator, create_nn_validator, load_validator_from_registry
+from .backtest_engine import run_backtest, calculate_backtest_metrics
+__all__ = ['download_market_data', 'load_raw_data_from_storage', 'extract_validation_features', 'create_feature_set', 'detect_signals', 'calculate_signal_metrics', 'validate_signals', 'create_labels', 'split_train_val_test', 'create_sklearn_validator', 'create_nn_validator', 'load_validator_from_registry', 'run_backtest', 'calculate_backtest_metrics']
+
+# FILE: src/sf_kedro/hooks/__init__.py
+----------------------------------------
+from .dagshub_hooks import DagsHubHook
+__all__ = ['DagsHubHook']
+
+# FILE: src/sf_kedro/pipelines/__init__.py
+----------------------------------------
+
+
+# FILE: src/sf_kedro/pipelines/baseline/__init__.py
+----------------------------------------
+from .pipeline import create_pipeline
+__all__ = ['create_pipeline']
+
+# FILE: tests/__init__.py
+----------------------------------------
+
+
+# FILE: tests/pipelines/__init__.py
+----------------------------------------
+
+
+# FILE: conf/base/catalog.yml
+----------------------------------------
+# conf/base/catalog.yml
+
+# Baseline namespace
+baseline.raw_signals:
+  type: pickle.PickleDataset
+  filepath: data/03_primary/baseline_raw_signals.pkl
+
+baseline.signal_metrics:
+  type: json.JSONDataset
+  filepath: data/08_reporting/baseline_signal_metrics.json
+
+baseline.backtest_metrics:
+  type: json.JSONDataset
+  filepath: data/08_reporting/baseline_backtest_metrics.json
+
+# ML validated namespace
+ml_validated.raw_signals:
+  type: pickle.PickleDataset
+  filepath: data/03_primary/ml_validated_raw_signals.pkl
+
+ml_validated.validation_features:
+  type: pickle.PickleDataset
+  filepath: data/04_feature/ml_validated_validation_features.pkl
+
+ml_validated.labeled_data:
+  type: pickle.PickleDataset
+  filepath: data/04_feature/ml_validated_labeled_data.pkl
+
+ml_validated.train_data:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/ml_validated_train_data.pkl
+
+ml_validated.val_data:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/ml_validated_val_data.pkl
+
+ml_validated.test_data:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/ml_validated_test_data.pkl
+
+ml_validated.validated_signals:
+  type: pickle.PickleDataset
+  filepath: data/06_models/ml_validated_validated_signals.pkl
+
+ml_validated.backtest_metrics:
+  type: json.JSONDataset
+  filepath: data/08_reporting/ml_validated_backtest_metrics.json
+
+# NN validated namespace
+nn_validated.raw_signals:
+  type: pickle.PickleDataset
+  filepath: data/03_primary/nn_validated_raw_signals.pkl
+
+nn_validated.validation_features:
+  type: pickle.PickleDataset
+  filepath: data/04_feature/nn_validated_validation_features.pkl
+
+nn_validated.labeled_data:
+  type: pickle.PickleDataset
+  filepath: data/04_feature/nn_validated_labeled_data.pkl
+
+nn_validated.train_data:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/nn_validated_train_data.pkl
+
+nn_validated.val_data:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/nn_validated_val_data.pkl
+
+nn_validated.test_data:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/nn_validated_test_data.pkl
+
+nn_validated.validated_signals:
+  type: pickle.PickleDataset
+  filepath: data/06_models/nn_validated_validated_signals.pkl
+
+nn_validated.backtest_metrics:
+  type: json.JSONDataset
+  filepath: data/08_reporting/nn_validated_backtest_metrics.json
+
+# Production namespace
+production.raw_signals:
+  type: pickle.PickleDataset
+  filepath: data/03_primary/production_raw_signals.pkl
+
+production.validation_features:
+  type: pickle.PickleDataset
+  filepath: data/04_feature/production_validation_features.pkl
+
+production.validated_signals:
+  type: pickle.PickleDataset
+  filepath: data/06_models/production_validated_signals.pkl
+
+production.backtest_metrics:
+  type: json.JSONDataset
+  filepath: data/08_reporting/production_backtest_metrics.json
+
+# FILE: conf/base/parameters.yml
+----------------------------------------
+# conf/base/parameters.yml
+# Shared parameters across all pipelines
+
+data:
+  pairs:
+    - BTCUSDT
+    - ETHUSDT
+    - SOLUSDT
+    - BNBUSDT
+    - XRPUSDT
+  date_range:
+    start:
+      year: 2025
+      month: 11
+      day: 1
+    end:
+      year: 2025
+      month: 12
+      day: 31
+  storage_path: "data/01_raw/market.duckdb"
+
+# FILE: conf/base/parameters/baseline.yml
+----------------------------------------
+# conf/base/parameters/baseline.yml
+
+baseline:
+
+  detector:
+    name: "sma_cross"
+    params:
+      fast_period: 60
+      slow_period: 720
+      price_col: "close"
+
+  strategy:
+    db_path: "data/07_model_output/strategy_baseline.duckdb"
+    initial_capital: 10000.0
+    fee_rate: 0.001
+    slippage_pct: 0.001
+    strategy_id: "baseline_strategy"
+    data_key: "spot"
+    
+    entry_rules:
+      - type: "signal_entry"
+        base_position_size: 1000.0
+        use_probability_sizing: false
+        min_probability: 0.0
+        max_positions_per_pair: 1
+        allow_shorts: false
+    
+    exit_rules:
+      - type: "tp_sl"
+        take_profit_pct: 0.02
+        stop_loss_pct: 0.02
+
+# FILE: conf/base/parameters/ml_validated.yml
+----------------------------------------
+# conf/base/parameters/ml_validated.yml
+
+ml_validated:
+
+  detector:
+    name: "sma_cross"
+    params:
+      fast_period: 60
+      slow_period: 720
+      price_col: "close"
+
+  ml_validator:
+    model_type: "random_forest"
+    model_params:
+      n_estimators: 100
+      max_depth: 5
+      random_state: 42
+
+  strategy:
+    db_path: "data/07_model_output/strategy_ml.duckdb"
+    initial_capital: 10000.0
+    fee_rate: 0.001
+    slippage_pct: 0.001
+    strategy_id: "ml_validated_strategy"
+    data_key: "spot"
+    
+    entry_rules:
+      - type: "signal_entry"
+        base_position_size: 1000.0
+        use_probability_sizing: true
+        min_probability: 0.6
+        max_positions_per_pair: 1
+        allow_shorts: false
+    
+    exit_rules:
+      - type: "tp_sl"
+        take_profit_pct: 0.02
+        stop_loss_pct: 0.02
+
+# FILE: conf/base/parameters/nn_validated.yml
+----------------------------------------
+# conf/base/parameters/nn_validated.yml
+
+nn_validated:
+
+  detector:
+    name: "sma_cross"
+    params:
+      fast_period: 60
+      slow_period: 720
+      price_col: "close"
+
+  nn_validator:
+    model:
+      encoder_type: "gru"
+      hidden_size: 128
+      num_layers: 2
+      dropout: 0.2
+      pooling_strategy: "attention"
+      num_classes: 3
+      
+    trainer:
+      max_epochs: 50
+      batch_size: 32
+      accelerator: "auto"
+      devices: 1
+      early_stopping_patience: 5
+
+  strategy:
+    db_path: "data/07_model_output/strategy_nn.duckdb"
+    initial_capital: 10000.0
+    fee_rate: 0.001
+    slippage_pct: 0.001
+    strategy_id: "nn_validated_strategy"
+    data_key: "spot"
+    
+    entry_rules:
+      - type: "signal_entry"
+        base_position_size: 1000.0
+        use_probability_sizing: true
+        min_probability: 0.6
+        max_positions_per_pair: 1
+        allow_shorts: false
+    
+    exit_rules:
+      - type: "tp_sl"
+        take_profit_pct: 0.02
+        stop_loss_pct: 0.02
+
+# FILE: conf/base/parameters/production.yml
+----------------------------------------
+# conf/base/parameters/production.yml
+  # Production-specific parameters
+production:
+  model:
+    name: "signalflow_nn_gru"  # Registered model name in MLflow
+    stage: "Production"  # Production, Staging, or version number
+
+  strategy:
+    db_path: "data/07_model_output/strategy_prod.duckdb"
+    initial_capital: 10000.0
+    fee_rate: 0.001
+    slippage_pct: 0.001
+    strategy_id: "production_strategy"
+    data_key: "spot"
+    
+    entry_rules:
+      - type: "signal_entry"
+        base_position_size: 1000.0
+        use_probability_sizing: true
+        min_probability: 0.65  # Higher threshold for production
+        max_positions_per_pair: 1
+        allow_shorts: false
+    
+    exit_rules:
+      - type: "tp_sl"
+        take_profit_pct: 0.025
+        stop_loss_pct: 0.015
+
+# FILE: src/sf_kedro/pipelines/baseline/nodes.py
+----------------------------------------
+
+
+# FILE: src/sf_kedro/pipelines/baseline/pipeline.py
+----------------------------------------
+from kedro.pipeline import Pipeline, node, pipeline
+from sf_kedro.modules import download_market_data, load_raw_data_from_storage, detect_signals, calculate_signal_metrics, run_backtest, calculate_backtest_metrics
+
+def create_pipeline(**kwargs) -> Pipeline:
+    return pipeline([node(func=download_market_data, inputs=['params:data.pairs', 'params:data.date_range', 'params:data.storage_path'], outputs='download_status', name='download_market_data', tags=['data_download']), node(func=load_raw_data_from_storage, inputs=['params:data.storage_path', 'params:data.pairs', 'params:data.date_range'], outputs='raw_data', name='load_raw_data', tags=['data_loading']), node(func=detect_signals, inputs=['raw_data', 'params:baseline.detector'], outputs='raw_signals', name='detect_signals', tags=['signal_detection']), node(func=calculate_signal_metrics, inputs=['raw_signals', 'raw_data'], outputs='signal_metrics', name='calculate_signal_metrics', tags=['metrics', 'signal_metrics']), node(func=run_backtest, inputs=['raw_data', 'raw_signals', 'params:baseline.strategy'], outputs='backtest_results', name='run_backtest', tags=['backtesting']), node(func=calculate_backtest_metrics, inputs='backtest_results', outputs='backtest_metrics', name='calculate_backtest_metrics', tags=['metrics', 'backtest_metrics'])])
+
+# FILE: conf/logging.yml
+----------------------------------------
+# To enable this custom logging configuration, set KEDRO_LOGGING_CONFIG to the path of this file.
+# More information available at https://docs.kedro.org/en/stable/logging/logging.html
+version: 1
+
+disable_existing_loggers: False
+
+formatters:
+  simple:
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: simple
+    stream: ext://sys.stdout
+
+  info_file_handler:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: simple
+    filename: info.log
+    maxBytes: 10485760 # 10MB
+    backupCount: 20
+    encoding: utf8
+    delay: True
+
+  rich:
+    class: kedro.logging.RichHandler
+    rich_tracebacks: True
+    # Advance options for customisation.
+    # See https://docs.kedro.org/en/stable/logging/logging.html#project-side-logging-configuration
+    # tracebacks_show_locals: False
+
+loggers:
+  kedro:
+    level: INFO
+
+  sf_kedro:
+    level: INFO
+
+root:
+  handlers: [rich, info_file_handler]
+
+# FILE: pyproject.toml
+----------------------------------------
+[build-system]
+requires = [
+    "setuptools",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+requires-python = ">=3.10"
+name = "sf_kedro"
+readme = "README.md"
+dynamic = [
+    "version",
+]
+dependencies = [
+    "ipython>=8.10",
+    "jupyterlab>=3.0",
+    "notebook",
+    "kedro~=1.1.1",
+]
+
+[project.scripts]
+sf-kedro = "sf_kedro.__main__:main"
+
+[project.entry-points."kedro.hooks"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest-cov>=3,<7",
+    "pytest-mock>=1.7.1, <2.0",
+    "pytest~=7.2",
+    "ruff~=0.12.0",
+]
+
+[tool.setuptools.dynamic.version]
+attr = "sf_kedro.__version__"
+
+[tool.setuptools.packages.find]
+where = [
+    "src",
+]
+namespaces = false
+
+[tool.kedro]
+package_name = "sf_kedro"
+project_name = "SF Kedro"
+kedro_init_version = "1.1.1"
+tools = "['Testing', 'Custom Logging', 'Data Structure']"
+example_pipeline = "False"
+source_dir = "src"
+
+[tool.pytest.ini_options]
+addopts = "--cov-report term-missing --cov src/sf_kedro -ra"
+
+[tool.coverage.report]
+fail_under = 0
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+]
+
+[tool.kedro_telemetry]
+project_id = "455c4b21f6d7499ba15d922f41f386fa"
+
+# FILE: src/sf_kedro/__main__.py
+----------------------------------------
+import sys
+from pathlib import Path
+from typing import Any
+from kedro.framework.cli.utils import find_run_command
+from kedro.framework.project import configure_project
+
+def main(*args, **kwargs) -> Any:
+    package_name = Path(__file__).parent.name
+    configure_project(package_name)
+    interactive = hasattr(sys, 'ps1')
+    kwargs['standalone_mode'] = not interactive
+    run = find_run_command(package_name)
+    return run(*args, **kwargs)
+if __name__ == '__main__':
+    main()
+
+# FILE: src/sf_kedro/general_nodes/backtest_engine.py
+----------------------------------------
+from typing import Dict
+from pathlib import Path
+import polars as pl
+import mlflow
+import signalflow as sf
+
+def run_backtest(raw_data: sf.core.RawData, validated_signals: sf.core.Signals, strategy_config: Dict) -> Dict:
+    from signalflow.strategy.broker import BacktestBroker
+    from signalflow.strategy.broker.executor import VirtualSpotExecutor
+    from signalflow.data.strategy_store import DuckDbStrategyStore
+    from signalflow.strategy.runner import OptimizedBacktestRunner
+    strategy_store = DuckDbStrategyStore(strategy_config.get('db_path', 'strategy.duckdb'))
+    strategy_store.init()
+    executor = VirtualSpotExecutor(fee_rate=strategy_config.get('fee_rate', 0.001), slippage_pct=strategy_config.get('slippage_pct', 0.001))
+    broker = BacktestBroker(executor=executor, store=strategy_store)
+    entry_rules = []
+    for rule_config in strategy_config.get('entry_rules', []):
+        rule_type = rule_config.pop('type')
+        if rule_type == 'signal_entry':
+            from signalflow.strategy.component.entry import SignalEntryRule
+            entry_rules.append(SignalEntryRule(**rule_config))
+    exit_rules = []
+    for rule_config in strategy_config.get('exit_rules', []):
+        rule_type = rule_config.pop('type')
+        if rule_type == 'tp_sl':
+            from signalflow.strategy.component.exit import TakeProfitStopLossExit
+            exit_rules.append(TakeProfitStopLossExit(**rule_config))
+    from signalflow.strategy.component.metric import TotalReturnMetric, BalanceAllocationMetric, DrawdownMetric, WinRateMetric, SharpeRatioMetric
+    initial_capital = strategy_config.get('initial_capital', 10000.0)
+    metrics = [TotalReturnMetric(initial_capital=initial_capital), BalanceAllocationMetric(initial_capital=initial_capital), DrawdownMetric(), WinRateMetric(), SharpeRatioMetric(initial_capital=initial_capital, window_size=100)]
+    runner = OptimizedBacktestRunner(strategy_id=strategy_config.get('strategy_id', 'default_strategy'), broker=broker, entry_rules=entry_rules, exit_rules=exit_rules, metrics=metrics, initial_capital=initial_capital, data_key=strategy_config.get('data_key', 'spot'))
+    final_state = runner.run(raw_data, validated_signals)
+    results = runner.get_results()
+    return results
+
+def calculate_backtest_metrics(backtest_results: Dict) -> Dict:
+    metrics = {'final_return': backtest_results.get('final_return', 0), 'max_drawdown': backtest_results.get('max_drawdown', 0), 'sharpe_ratio': backtest_results.get('sharpe_ratio', 0), 'win_rate': backtest_results.get('win_rate', 0), 'total_trades': backtest_results.get('total_trades', 0), 'final_equity': backtest_results.get('final_equity', 0)}
+    mlflow.log_metrics({'backtest.return': metrics['final_return'], 'backtest.max_drawdown': metrics['max_drawdown'], 'backtest.sharpe': metrics['sharpe_ratio'], 'backtest.win_rate': metrics['win_rate'], 'backtest.total_trades': metrics['total_trades'], 'backtest.final_equity': metrics['final_equity']})
+    metrics_df = backtest_results.get('metrics_df')
+    if metrics_df is not None:
+        output_path = Path('equity_curve.csv')
+        metrics_df.write_csv(output_path)
+        mlflow.log_artifact(str(output_path), artifact_path='backtest')
+    trades_df = backtest_results.get('trades_df')
+    if trades_df is not None:
+        output_path = Path('trades.parquet')
+        trades_df.write_parquet(output_path)
+        mlflow.log_artifact(str(output_path), artifact_path='backtest')
+    return metrics
+
+# FILE: src/sf_kedro/general_nodes/data_loader.py
+----------------------------------------
+import asyncio
+from pathlib import Path
+from datetime import datetime
+from typing import Dict, List
+import mlflow
+import signalflow as sf
+
+def download_market_data(pairs: List[str], date_range: Dict, storage_path: str) -> str:
+    storage_path = Path(storage_path)
+    storage_path.parent.mkdir(parents=True, exist_ok=True)
+    spot_store = sf.data.raw_store.DuckDbSpotStore(db_path=storage_path)
+    loader = sf.data.source.BinanceSpotLoader(store=spot_store)
+    start = datetime(**date_range['start'])
+    end = datetime(**date_range['end'])
+    asyncio.run(loader.download(pairs=pairs, start=start, end=end))
+    mlflow.log_params({'data.pairs': ','.join(pairs), 'data.start_date': start.isoformat(), 'data.end_date': end.isoformat(), 'data.num_pairs': len(pairs)})
+    return f'Downloaded {len(pairs)} pairs to {storage_path}'
+
+def load_raw_data_from_storage(storage_path: str, pairs: List[str], date_range: Dict, data_types: List[str]=None) -> sf.core.RawData:
+    if data_types is None:
+        data_types = ['spot']
+    start = datetime(**date_range['start'])
+    end = datetime(**date_range['end'])
+    raw_data = sf.data.RawDataFactory.from_duckdb_spot_store(spot_store_path=Path(storage_path), pairs=pairs, start=start, end=end, data_types=data_types)
+    spot_df = raw_data.get('spot')
+    mlflow.log_metrics({'data.total_rows': spot_df.height, 'data.unique_pairs': spot_df.select('pair').n_unique(), 'data.date_span_days': (end - start).days})
+    return raw_data
+
+# FILE: src/sf_kedro/general_nodes/feature_builder.py
+----------------------------------------
+from typing import Dict, List
+import polars as pl
+import mlflow
+import signalflow as sf
+
+def create_feature_set(feature_configs: List[Dict]) -> sf.feature.FeatureSet:
+    extractors = []
+    for config in feature_configs:
+        extractor_name = config.get('name')
+        if extractor_name and 'custom' in extractor_name:
+            continue
+        pass
+    return sf.feature.FeatureSet(extractors=extractors)
+
+def extract_validation_features(raw_data: sf.core.RawData, feature_configs: List[Dict]) -> pl.DataFrame:
+    from dataclasses import dataclass
+
+    @dataclass
+    @sf.core.sf_component(name='custom/log_return', override=True)
+    class LogReturnExtractor(sf.feature.FeatureExtractor):
+        price_col: str = 'close'
+        out_col: str = 'log_ret'
+        period: int = 1
+
+        def compute_group(self, group_df: pl.DataFrame, data_context: dict | None) -> pl.DataFrame:
+            if self.price_col not in group_df.columns:
+                raise ValueError(f'Missing required column: {self.price_col}')
+            log_ret = pl.col(self.price_col).log().diff(n=self.period).alias(self.out_col)
+            return group_df.with_columns(log_ret)
+    extractors = []
+    for config in feature_configs:
+        extractor = LogReturnExtractor(price_col=config.get('price_col', 'close'), out_col=config.get('out_col', 'log_ret'), period=config.get('period', 1))
+        extractors.append(extractor)
+    feature_set = sf.feature.FeatureSet(extractors=extractors)
+    raw_data_view = sf.core.RawDataView(raw_data)
+    features_df = feature_set.extract(raw_data_view)
+    feature_cols = [col for col in features_df.columns if col not in ['timestamp', 'pair']]
+    mlflow.log_params({'features.num_features': len(feature_cols), 'features.names': ','.join(feature_cols[:10])})
+    mlflow.log_metrics({'features.total_rows': features_df.height, 'features.null_ratio': features_df.null_count().sum() / (features_df.height * len(feature_cols)) if len(feature_cols) > 0 else 0})
+    return features_df
+
+# FILE: src/sf_kedro/general_nodes/labeling.py
+----------------------------------------
+from typing import Dict, Tuple
+import polars as pl
+import mlflow
+import signalflow as sf
+
+def create_labels(raw_data: sf.core.RawData, signals: sf.core.Signals, labeler_config: Dict) -> pl.DataFrame:
+    labeler_name = labeler_config.get('name')
+    if labeler_name == 'fixed_horizon':
+        from signalflow.target import FixedHorizonLabeler
+        labeler = FixedHorizonLabeler(price_col=labeler_config.get('price_col', 'close'), horizon=labeler_config.get('horizon', 10), include_meta=labeler_config.get('include_meta', True))
+    else:
+        raise ValueError(f'Unknown labeler: {labeler_name}')
+    raw_df = raw_data.get('spot')
+    labeled_df = labeler.compute(df=raw_df, signals=signals)
+    label_dist = labeled_df.group_by('label').agg(pl.count().alias('count'))
+    mlflow.log_params({'labeler.type': labeler.__class__.__name__, 'labeler.horizon': labeler_config.get('horizon', 10)})
+    for row in label_dist.iter_rows(named=True):
+        mlflow.log_metric(f"labels.{row['label']}", row['count'])
+    return labeled_df
+
+def split_train_val_test(labeled_data: pl.DataFrame, features: pl.DataFrame, split_config: Dict) -> Tuple[Dict, Dict, Dict]:
+    train_ratio = split_config.get('train_ratio', 0.7)
+    val_ratio = split_config.get('val_ratio', 0.15)
+    full_data = features.join(labeled_data.select(['timestamp', 'pair', 'label']), on=['timestamp', 'pair'], how='inner')
+    full_data = full_data.drop_nulls()
+    n = full_data.height
+    train_end = int(n * train_ratio)
+    val_end = int(n * (train_ratio + val_ratio))
+    train_data = {'full': full_data.slice(0, train_end)}
+    val_data = {'full': full_data.slice(train_end, val_end - train_end)}
+    test_data = {'full': full_data.slice(val_end, None)}
+    mlflow.log_params({'split.train_ratio': train_ratio, 'split.val_ratio': val_ratio, 'split.test_ratio': 1 - train_ratio - val_ratio})
+    mlflow.log_metrics({'split.train_samples': train_data['full'].height, 'split.val_samples': val_data['full'].height, 'split.test_samples': test_data['full'].height})
+    return (train_data, val_data, test_data)
+
+# FILE: src/sf_kedro/general_nodes/signal_processor.py
+----------------------------------------
+from typing import Dict
+import polars as pl
+import mlflow
+import signalflow as sf
+
+def detect_signals(raw_data: sf.core.RawData, detector_config: Dict) -> sf.core.Signals:
+    detector_name = detector_config.get('name')
+    detector_type = sf.core.default_registry.get(component_type=sf.core.SfComponentType.DETECTOR, name=detector_name)
+    detector: sf.detector.SignalDetector = detector_type(**detector_config.get('params', {}))
+    raw_data_view = sf.core.RawDataView(raw_data)
+    signals = detector.run(raw_data_view=raw_data_view, context=None)
+    mlflow.log_params({'detector.type': detector_name, 'detector.params': detector_config.get('params', {})})
+    return signals
+
+def calculate_signal_metrics(signals: sf.core.Signals, raw_data: sf.core.RawData) -> Dict:
+    signal_df = signals.value
+    signal_counts = signal_df.group_by('signal_type').agg(pl.count().alias('count'))
+    signal_type_dict = {row['signal_type']: row['count'] for row in signal_counts.iter_rows(named=True)}
+    pair_counts = signal_df.group_by('pair').agg(pl.count().alias('count'))
+    metrics = {'total_signals': signal_df.height, 'rise_signals': signal_type_dict.get('rise', 0), 'fall_signals': signal_type_dict.get('fall', 0), 'none_signals': signal_type_dict.get('none', 0), 'unique_pairs': signal_df.select('pair').n_unique()}
+    mlflow.log_metrics({f'signals.{k}': v for k, v in metrics.items()})
+    return metrics
+
+def validate_signals(raw_signals: sf.core.Signals, features: pl.DataFrame, validator) -> sf.core.Signals:
+    validated_signals = validator.validate_signals(raw_signals, features)
+    val_df = validated_signals.value
+    if 'probability_rise' in val_df.columns:
+        high_conf = val_df.filter((pl.col('probability_rise') > 0.6) | (pl.col('probability_fall') > 0.6)).height
+        filter_rate = 1 - high_conf / val_df.height if val_df.height > 0 else 0
+        mlflow.log_metrics({'validation.high_confidence_signals': high_conf, 'validation.filter_rate': filter_rate})
+    return validated_signals
+
+# FILE: src/sf_kedro/general_nodes/validator_factory.py
+----------------------------------------
+from typing import Dict
+import mlflow
+from pathlib import Path
+import signalflow as sf
+
+def create_sklearn_validator(train_data: Dict, val_data: Dict, model_config: Dict) -> sf.validator.SklearnSignalValidator:
+    from signalflow.validator import SklearnSignalValidator
+    validator = SklearnSignalValidator(model_type=model_config['model_type'], model_params=model_config.get('model_params', {}))
+    train_df = train_data['full']
+    feature_cols = [col for col in train_df.columns if col not in ['timestamp', 'pair', 'label']]
+    X_train = train_df.select(feature_cols)
+    y_train = train_df.select('label')
+    validator.fit(X_train, y_train)
+    val_df = val_data['full']
+    X_val = val_df.select(feature_cols)
+    y_val = val_df.select('label')
+    from sklearn.metrics import accuracy_score, classification_report
+    y_pred = validator.model.predict(X_val.to_pandas())
+    val_accuracy = accuracy_score(y_val.to_pandas(), y_pred)
+    mlflow.log_params({'model.type': model_config['model_type'], **{f'model.{k}': v for k, v in model_config.get('model_params', {}).items()}})
+    mlflow.log_metrics({'val_accuracy': val_accuracy})
+    mlflow.sklearn.log_model(validator.model, artifact_path='sklearn_validator', registered_model_name=f"signalflow_sklearn_{model_config['model_type']}")
+    return validator
+
+def create_nn_validator(train_data: Dict, val_data: Dict, model_config: Dict, trainer_config: Dict) -> object:
+    import pytorch_lightning as pl
+    from pytorch_lightning.loggers import MLFlowLogger
+    from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
+    from signalflow_nn.validator import TemporalValidator
+    validator = TemporalValidator(**model_config)
+    mlf_logger = MLFlowLogger(experiment_name=mlflow.get_experiment(mlflow.active_run().info.experiment_id).name, tracking_uri=mlflow.get_tracking_uri(), run_id=mlflow.active_run().info.run_id)
+    checkpoint_callback = ModelCheckpoint(monitor='val_loss', mode='min', save_top_k=1, filename='best-{epoch:02d}-{val_loss:.2f}')
+    early_stop_callback = EarlyStopping(monitor='val_loss', patience=trainer_config.get('early_stopping_patience', 5), mode='min')
+    trainer = pl.Trainer(max_epochs=trainer_config.get('max_epochs', 50), logger=mlf_logger, callbacks=[checkpoint_callback, early_stop_callback], accelerator=trainer_config.get('accelerator', 'auto'), devices=trainer_config.get('devices', 1))
+    from torch.utils.data import DataLoader, TensorDataset
+    import torch
+
+    def create_dataloader(data_dict, batch_size=32):
+        df = data_dict['full']
+        feature_cols = [col for col in df.columns if col not in ['timestamp', 'pair', 'label']]
+        X = torch.tensor(df.select(feature_cols).to_numpy(), dtype=torch.float32)
+        y = torch.tensor(df.select('label').to_pandas()['label'].astype('category').cat.codes.values, dtype=torch.long)
+        dataset = TensorDataset(X, y)
+        return DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    train_loader = create_dataloader(train_data, batch_size=trainer_config.get('batch_size', 32))
+    val_loader = create_dataloader(val_data, batch_size=trainer_config.get('batch_size', 32))
+    trainer.fit(validator, train_loader, val_loader)
+    mlflow.pytorch.log_model(validator.model, artifact_path='nn_validator', registered_model_name=f"signalflow_nn_{model_config.get('encoder_type', 'gru')}")
+    return validator
+
+def load_validator_from_registry(model_name: str, stage: str='Production') -> object:
+    from mlflow.tracking import MlflowClient
+    client = MlflowClient()
+    model_versions = client.get_latest_versions(model_name, stages=[stage])
+    if not model_versions:
+        raise ValueError(f'No model found for {model_name} in stage {stage}')
+    model_version = model_versions[0]
+    model_uri = f'models:/{model_name}/{stage}'
+    if 'sklearn' in model_name:
+        model = mlflow.sklearn.load_model(model_uri)
+        from signalflow.validator import SklearnSignalValidator
+        validator = SklearnSignalValidator(model_type='loaded', model_params={})
+        validator.model = model
+    else:
+        model = mlflow.pytorch.load_model(model_uri)
+        validator = model
+    mlflow.log_params({'model.name': model_name, 'model.version': model_version.version, 'model.stage': stage, 'model.run_id': model_version.run_id})
+    return validator
+
+# FILE: src/sf_kedro/hooks/dagshub_hooks.py
+----------------------------------------
+from kedro.framework.hooks import hook_impl
+import dagshub
+import mlflow
+import os
+from pathlib import Path
+from typing import Any, Dict
+
+class DagsHubHook:
+
+    def __init__(self):
+        self.dagshub_repo = os.getenv('DAGSHUB_REPO')
+
+    @hook_impl
+    def before_pipeline_run(self, run_params: Dict[str, Any], pipeline, catalog):
+        if not self.dagshub_repo:
+            print('Warning: DAGSHUB_REPO not set, skipping DagsHub initialization')
+            return
+        repo_owner, repo_name = self.dagshub_repo.split('/')
+        dagshub.init(repo_name=repo_name, repo_owner=repo_owner, mlflow=True)
+        tracking_uri = os.getenv('MLFLOW_TRACKING_URI')
+        if tracking_uri:
+            mlflow.set_tracking_uri(tracking_uri)
+        pipeline_name = run_params.get('pipeline_name', 'default')
+        experiment_name = f'signalflow_{pipeline_name}'
+        mlflow.set_experiment(experiment_name)
+        run_id = run_params.get('run_id', 'manual')
+        run_name = f'{pipeline_name}_{run_id}'
+        mlflow.start_run(run_name=run_name)
+        try:
+            import git
+            repo = git.Repo(Path.cwd())
+            mlflow.set_tags({'git.commit': repo.head.commit.hexsha[:7], 'git.branch': repo.active_branch.name, 'git.is_dirty': str(repo.is_dirty())})
+        except Exception as e:
+            print(f'Could not log git info: {e}')
+        mlflow.set_tags({'kedro.pipeline': pipeline_name, 'kedro.run_id': run_id})
+        print(f'✓ MLflow tracking initialized: {experiment_name}')
+        print(f'✓ Run: {run_name}')
+
+    @hook_impl
+    def after_pipeline_run(self, run_params: Dict[str, Any], pipeline, catalog):
+        try:
+            mlflow.set_tag('status', 'success')
+            mlflow.end_run()
+            print('✓ MLflow run completed successfully')
+        except Exception as e:
+            print(f'Error ending MLflow run: {e}')
+
+    @hook_impl
+    def on_pipeline_error(self, error: Exception, run_params: Dict[str, Any], pipeline, catalog):
+        try:
+            mlflow.set_tag('status', 'failed')
+            mlflow.log_param('error_message', str(error))
+            mlflow.end_run(status='FAILED')
+            print(f'✗ MLflow run failed: {error}')
+        except Exception as e:
+            print(f'Error logging failure: {e}')
+
+# FILE: src/sf_kedro/pipeline_registry.py
+----------------------------------------
+from __future__ import annotations
+from kedro.framework.project import find_pipelines
+from kedro.pipeline import Pipeline
+
+def register_pipelines() -> dict[str, Pipeline]:
+    pipelines = find_pipelines()
+    pipelines['__default__'] = sum(pipelines.values())
+    return pipelines
+
+# FILE: src/sf_kedro/pipelines/ml_validated/nodes.py
+----------------------------------------
+
+
+# FILE: src/sf_kedro/pipelines/ml_validated/pipeline.py
+----------------------------------------
+from kedro.pipeline import Pipeline, node, pipeline
+from sf_kedro.modules import download_market_data, load_raw_data_from_storage, detect_signals, calculate_signal_metrics, extract_validation_features, create_labels, split_train_val_test, create_sklearn_validator, validate_signals, run_backtest, calculate_backtest_metrics
+
+def create_pipeline(**kwargs) -> Pipeline:
+    base_pipeline = pipeline([node(func=download_market_data, inputs=['params:data.pairs', 'params:data.date_range', 'params:data.storage_path'], outputs='download_status', name='download_market_data', tags=['data_download']), node(func=load_raw_data_from_storage, inputs=['params:data.storage_path', 'params:data.pairs', 'params:data.date_range'], outputs='raw_data', name='load_raw_data', tags=['data_loading']), node(func=detect_signals, inputs=['raw_data', 'params:detector'], outputs='raw_signals', name='detect_signals', tags=['signal_detection']), node(func=calculate_signal_metrics, inputs=['raw_signals', 'raw_data'], outputs='raw_signal_metrics', name='calculate_raw_signal_metrics', tags=['metrics', 'signal_metrics']), node(func=extract_validation_features, inputs=['raw_data', 'params:features.extractors'], outputs='validation_features', name='extract_validation_features', tags=['feature_engineering']), node(func=create_labels, inputs=['raw_data', 'raw_signals', 'params:labeler'], outputs='labeled_data', name='create_labels', tags=['labeling']), node(func=split_train_val_test, inputs=['labeled_data', 'validation_features', 'params:split'], outputs=['train_data', 'val_data', 'test_data'], name='split_train_val_test', tags=['data_split']), node(func=create_sklearn_validator, inputs=['train_data', 'val_data', 'params:ml_validator'], outputs='trained_validator', name='train_sklearn_validator', tags=['model_training', 'sklearn']), node(func=validate_signals, inputs=['raw_signals', 'validation_features', 'trained_validator'], outputs='validated_signals', name='validate_signals', tags=['signal_validation']), node(func=calculate_signal_metrics, inputs=['validated_signals', 'raw_data'], outputs='validated_signal_metrics', name='calculate_validated_signal_metrics', tags=['metrics', 'signal_metrics']), node(func=run_backtest, inputs=['raw_data', 'validated_signals', 'params:strategy'], outputs='backtest_results', name='run_backtest', tags=['backtesting']), node(func=calculate_backtest_metrics, inputs='backtest_results', outputs='backtest_metrics', name='calculate_backtest_metrics', tags=['metrics', 'backtest_metrics'])])
+    return pipeline(base_pipeline, namespace='ml_validated', parameters={'params:data', 'params:detector', 'params:features', 'params:labeler', 'params:split', 'params:ml_validator', 'params:strategy'})
+
+# FILE: src/sf_kedro/pipelines/nn_validated/nodes.py
+----------------------------------------
+
+
+# FILE: src/sf_kedro/pipelines/nn_validated/pipeline.py
+----------------------------------------
+from kedro.pipeline import Pipeline, node, pipeline
+from sf_kedro.modules import download_market_data, load_raw_data_from_storage, detect_signals, calculate_signal_metrics, extract_validation_features, create_labels, split_train_val_test, create_nn_validator, validate_signals, run_backtest, calculate_backtest_metrics
+
+def create_pipeline(**kwargs) -> Pipeline:
+    base_pipeline = pipeline([node(func=download_market_data, inputs=['params:data.pairs', 'params:data.date_range', 'params:data.storage_path'], outputs='download_status', name='download_market_data', tags=['data_download']), node(func=load_raw_data_from_storage, inputs=['params:data.storage_path', 'params:data.pairs', 'params:data.date_range'], outputs='raw_data', name='load_raw_data', tags=['data_loading']), node(func=detect_signals, inputs=['raw_data', 'params:detector'], outputs='raw_signals', name='detect_signals', tags=['signal_detection']), node(func=calculate_signal_metrics, inputs=['raw_signals', 'raw_data'], outputs='raw_signal_metrics', name='calculate_raw_signal_metrics', tags=['metrics', 'signal_metrics']), node(func=extract_validation_features, inputs=['raw_data', 'params:features.extractors'], outputs='validation_features', name='extract_validation_features', tags=['feature_engineering']), node(func=create_labels, inputs=['raw_data', 'raw_signals', 'params:labeler'], outputs='labeled_data', name='create_labels', tags=['labeling']), node(func=split_train_val_test, inputs=['labeled_data', 'validation_features', 'params:split'], outputs=['train_data', 'val_data', 'test_data'], name='split_train_val_test', tags=['data_split']), node(func=create_nn_validator, inputs=['train_data', 'val_data', 'params:nn_validator.model', 'params:nn_validator.trainer'], outputs='trained_validator', name='train_neural_validator', tags=['model_training', 'neural_network']), node(func=validate_signals, inputs=['raw_signals', 'validation_features', 'trained_validator'], outputs='validated_signals', name='validate_signals', tags=['signal_validation']), node(func=calculate_signal_metrics, inputs=['validated_signals', 'raw_data'], outputs='validated_signal_metrics', name='calculate_validated_signal_metrics', tags=['metrics', 'signal_metrics']), node(func=run_backtest, inputs=['raw_data', 'validated_signals', 'params:strategy'], outputs='backtest_results', name='run_backtest', tags=['backtesting']), node(func=calculate_backtest_metrics, inputs='backtest_results', outputs='backtest_metrics', name='calculate_backtest_metrics', tags=['metrics', 'backtest_metrics'])])
+    return pipeline(base_pipeline, namespace='nn_validated', parameters={'params:data', 'params:detector', 'params:features', 'params:labeler', 'params:split', 'params:nn_validator', 'params:strategy'})
+
+# FILE: src/sf_kedro/pipelines/production/nodes.py
+----------------------------------------
+
+
+# FILE: src/sf_kedro/pipelines/production/pipeline.py
+----------------------------------------
+from kedro.pipeline import Pipeline, node, pipeline
+from sf_kedro.modules import load_raw_data_from_storage, detect_signals, extract_validation_features, load_validator_from_registry, validate_signals, run_backtest, calculate_backtest_metrics
+
+def create_pipeline(**kwargs) -> Pipeline:
+    base_pipeline = pipeline([node(func=load_raw_data_from_storage, inputs=['params:data.storage_path', 'params:data.pairs', 'params:data.date_range'], outputs='raw_data', name='load_raw_data', tags=['data_loading']), node(func=detect_signals, inputs=['raw_data', 'params:detector'], outputs='raw_signals', name='detect_signals', tags=['signal_detection']), node(func=extract_validation_features, inputs=['raw_data', 'params:features.extractors'], outputs='validation_features', name='extract_validation_features', tags=['feature_engineering']), node(func=load_validator_from_registry, inputs=['params:model.name', 'params:model.stage'], outputs='production_validator', name='load_production_validator', tags=['model_loading']), node(func=validate_signals, inputs=['raw_signals', 'validation_features', 'production_validator'], outputs='validated_signals', name='validate_signals', tags=['signal_validation']), node(func=run_backtest, inputs=['raw_data', 'validated_signals', 'params:strategy'], outputs='backtest_results', name='run_backtest', tags=['backtesting']), node(func=calculate_backtest_metrics, inputs='backtest_results', outputs='backtest_metrics', name='calculate_backtest_metrics', tags=['metrics', 'backtest_metrics'])])
+    return pipeline(base_pipeline, namespace='production', parameters={'params:data', 'params:detector', 'params:features', 'params:model', 'params:strategy'})
+
+# FILE: src/sf_kedro/settings.py
+----------------------------------------
+from pathlib import Path
+env_file = Path(__file__).parent.parent.parent / '.env'
+if env_file.exists():
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(env_file)
+    except ImportError:
+        pass
+from sf_kedro.hooks.dagshub_hooks import DagsHubHook
+HOOKS = (DagsHubHook(),)
+DISABLE_HOOKS_FOR_PLUGINS = ('kedro-viz',)
+
+# FILE: tests/test_run.py
+----------------------------------------
+import pytest
+from pathlib import Path
+from kedro.framework.session import KedroSession
+from kedro.framework.startup import bootstrap_project
+
+class TestKedroRun:
+
+    def test_kedro_run_no_pipeline(self):
+        bootstrap_project(Path.cwd())
+        with pytest.raises(Exception) as excinfo:
+            with KedroSession.create(project_path=Path.cwd()) as session:
+                session.run()
+        assert 'Pipeline contains no nodes' in str(excinfo.value)
+

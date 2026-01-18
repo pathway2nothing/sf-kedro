@@ -43,7 +43,7 @@ def create_pipeline(**kwargs) -> Pipeline:
         # Signal detection
         node(
             func=detect_signals,
-            inputs=["raw_data", "params:detector"],
+            inputs=["raw_data", "params:baseline.detector"],
             outputs="raw_signals",
             name="detect_signals",
             tags=["signal_detection"],
@@ -72,4 +72,3 @@ def create_pipeline(**kwargs) -> Pipeline:
             tags=["metrics", "backtest_metrics"],
         ),
     ])
-    # БЕЗ namespace!
