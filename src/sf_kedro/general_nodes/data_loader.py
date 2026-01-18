@@ -10,9 +10,10 @@ import signalflow as sf
 
 
 def download_market_data(
+    store_config: Dict,
+    loader_config: Dict,
+    period: Dict,
     pairs: List[str],
-    date_range: Dict,
-    storage_path: str,
 ) -> str:
     """
     Download market data from Binance to DuckDB storage.
@@ -25,73 +26,71 @@ def download_market_data(
     Returns:
         Status message
     """
-    storage_path = Path(storage_path)
-    storage_path.parent.mkdir(parents=True, exist_ok=True)
     
-    spot_store = sf.data.raw_store.DuckDbSpotStore(db_path=storage_path)
-    loader = sf.data.source.BinanceSpotLoader(store=spot_store)
+    store_type = store_config.get('type', 'duckdb/spot')
+    store_params = store_config.get('params', {})
+
+    if 'db_path' not in store_params:
+        store_params['db_path'] = 'data/01_raw/market.duckdb'
+    store_params['db_path'] = Path(store_params['db_path'])
+    store_params['db_path'].parent.mkdir(parents=True, exist_ok=True)
+
+    store: sf.data.raw_store.RawDataStore = sf.core.default_registry.get(
+        component_type=sf.core.SfComponentType.RAW_DATA_STORE,
+        name=store_type)(**store_params)
+
+    loader_type = sf.core.default_registry.get(
+        component_type=sf.core.SfComponentType.RAW_DATA_LOADER,
+        name=loader_config.get('type', 'binance/spot'))
     
-    # Convert date_range to datetime objects
-    start = datetime(**date_range['start'])
-    end = datetime(**date_range['end'])
+    loader_params = loader_config.get('params', {})
     
-    # Download data
+    loader: sf.data.raw_loader.RawDataLoader = loader_type(store=store, **loader_params)
+
+    start = datetime(**period['start'])
+    end = datetime(**period['end'])
+
     asyncio.run(loader.download(
-        pairs=pairs,
+        pairs=loader_params.get('pairs', ['BTCUSDT']),
         start=start,
         end=end,
     ))
     
-    # Log to MLflow
     mlflow.log_params({
-        "data.pairs": "[" + ", ".join(pairs) + "]",
+        "data.pairs": "[" + ", ".join(loader_params.get('pairs', ['BTCUSDT'])) + "]",
         "data.start_date": start.isoformat(),
         "data.end_date": end.isoformat(),
-        "data.num_pairs": len(pairs),
+        "data.num_pairs": len(loader_params.get('pairs', ['BTCUSDT'])),
     })
     
-    return f"Downloaded {len(pairs)} pairs to {storage_path}"
+    return str(store_params["db_path"])
 
 
 def load_raw_data_from_storage(
-    storage_path: str,
+    store_config: Dict,
+    period: Dict,
     pairs: List[str],
-    date_range: Dict,
-    data_types: List[str] = None,
+    store_path: str,
 ) -> sf.core.RawData:
-    """
-    Load RawData from DuckDB storage.
-    
-    Args:
-        storage_path: Path to DuckDB file
-        pairs: List of trading pairs to load
-        date_range: Date range for filtering
-        data_types: Types of data to load (default: ["spot"])
-        
-    Returns:
-        RawData object
-    """
-    if data_types is None:
-        data_types = ["spot"]
-    
-    start = datetime(**date_range['start'])
-    end = datetime(**date_range['end'])
-    
+    db_path = Path(store_path)
+
+    start = datetime(**period["start"])
+    end = datetime(**period["end"])
+
     raw_data = sf.data.RawDataFactory.from_duckdb_spot_store(
-        spot_store_path=Path(storage_path),
+        spot_store_path=db_path,
         pairs=pairs,
         start=start,
         end=end,
-        data_types=data_types,
+        data_types=["spot"],
     )
-    
-    # Log data statistics
+
     spot_df = raw_data.get("spot")
-    
-    mlflow.log_metrics({
-        "data.total_rows": spot_df.height,
-        "data.unique_pairs": spot_df.select("pair").n_unique(),
-        "data.date_span_days": (end - start).days,
-    })
-    
+    mlflow.log_metrics(
+        {
+            "data.total_rows": spot_df.height,
+            "data.unique_pairs": spot_df.select("pair").n_unique(),
+            "data.date_span_days": (end - start).days,
+        }
+    )
     return raw_data

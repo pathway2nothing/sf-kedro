@@ -51,8 +51,7 @@ def extract_validation_features(
     Returns:
         DataFrame with features
     """
-    # For baseline, we'll create extractors directly
-    # Import your custom LogReturnExtractor
+
     from dataclasses import dataclass
     
     @dataclass

@@ -1,21 +1,27 @@
 # conf/base/parameters.yml
-# Shared parameters across all pipelines
 
 data:
+  store:
+    type: duckdb/spot
+    params:
+      db_path: "data/01_raw/market.duckdb"
+  
+  loader:
+    type: binance/spot      
+
   pairs:
     - BTCUSDT
     - ETHUSDT
     - SOLUSDT
     - BNBUSDT
     - XRPUSDT
-  date_range:
+  period:
     start:
       year: 2025
-      month: 11
+      month: 12
       day: 1
     end:
       year: 2025
       month: 12
       day: 31
-  storage_path: "data/01_raw/market.duckdb"
 
