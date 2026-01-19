@@ -13,6 +13,9 @@ baseline.backtest_metrics:
   type: json.JSONDataset
   filepath: data/08_reporting/baseline_backtest_metrics.json
 
+baseline.signal_metrics:
+  type: MemoryDataset
+
 # ML validated namespace
 ml_validated.raw_signals:
   type: pickle.PickleDataset

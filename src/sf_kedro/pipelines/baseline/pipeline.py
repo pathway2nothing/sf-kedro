@@ -4,7 +4,7 @@ from sf_kedro.general_nodes import (
     download_market_data,
     load_raw_data_from_storage,
     detect_signals,
-    calculate_signal_metrics,
+    compute_signal_metrics,
     run_backtest,
     calculate_backtest_metrics,
 )
@@ -34,11 +34,10 @@ def create_pipeline(**kwargs) -> Pipeline:
                 tags=["signal_detection"],
             ),
             node(
-                func=calculate_signal_metrics,
-                inputs=["raw_signals", "raw_data"],
+                func=compute_signal_metrics, 
+                inputs=["raw_data", "raw_signals", "params:baseline.metrics"],
                 outputs="signal_metrics",
-                name="calculate_signal_metrics",
-                tags=["metrics", "signal_metrics"],
+                name="compute_metrics_node",
             ),
             node(
                 func=run_backtest,

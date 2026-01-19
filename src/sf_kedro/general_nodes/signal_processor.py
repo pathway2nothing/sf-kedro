@@ -5,7 +5,10 @@ import polars as pl
 import mlflow
 
 import signalflow as sf
-
+from sf_kedro.custom_modules import SignalMetrics, SignalMetricsConfig
+import tempfile
+from pathlib import Path
+import plotly.io as pio
 
 def detect_signals(
     raw_data: sf.core.RawData,
@@ -36,55 +39,53 @@ def detect_signals(
     return signals
 
 
-def calculate_signal_metrics(
-    signals: sf.core.Signals,
-    raw_data: sf.core.RawData,
-) -> Dict:
+def compute_signal_metrics(
+    raw_df: pl.DataFrame,
+    signals_df: pl.DataFrame,
+    params: dict
+) -> dict:
     """
-    Calculate signal quality metrics.
+    Compute signal metrics and log to MLflow
     
     Args:
-        signals: Detected signals
-        raw_data: Raw market data
+        raw_df: Raw OHLCV data
+        signals_df: Signals dataframe
+        params: Parameters from conf
         
     Returns:
-        Dictionary of metrics
+        Dictionary with scalar metrics
     """
-    signal_df = signals.value
-    
-    # Signal type distribution
-    signal_counts = (
-        signal_df
-        .group_by("signal_type")
-        .agg(pl.count().alias("count"))
+    metrics_config = SignalMetricsConfig(
+        look_ahead=params.get("look_ahead", 1440),
+        quantiles=tuple(params.get("quantiles", [0.25, 0.75])),
+        pairs_to_plot=params.get("pairs_to_plot", ["BTCUSDT", "ETHUSDT"])
     )
     
-    signal_type_dict = {
-        row['signal_type']: row['count']
-        for row in signal_counts.iter_rows(named=True)
-    }
+    metrics_computer = SignalMetrics(metrics_config)
     
-    # Per-pair distribution
-    pair_counts = (
-        signal_df
-        .group_by("pair")
-        .agg(pl.count().alias("count"))
-    )
+    # Compute all metrics
+    results = metrics_computer.compute_all_metrics(raw_df, signals_df)
     
-    metrics = {
-        "total_signals": signal_df.height,
-        "rise_signals": signal_type_dict.get("rise", 0),
-        "fall_signals": signal_type_dict.get("fall", 0),
-        "none_signals": signal_type_dict.get("none", 0),
-        "unique_pairs": signal_df.select("pair").n_unique(),
-    }
+    # Log scalar metrics to MLflow
+    if mlflow.active_run():
+        mlflow.log_metrics(results["scalar_metrics"])
+        
+        # Log figures as artifacts
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+            
+            for fig_name, fig in results["figures"].items():
+                # Save as HTML (interactive)
+                html_path = tmpdir_path / f"{fig_name}.html"
+                pio.write_html(fig, str(html_path))
+                mlflow.log_artifact(str(html_path), artifact_path="plots")
+                
+                # Save as PNG (static)
+                png_path = tmpdir_path / f"{fig_name}.png"
+                pio.write_image(fig, str(png_path), width=1400, height=900)
+                mlflow.log_artifact(str(png_path), artifact_path="plots")
     
-    # Log to MLflow
-    mlflow.log_metrics({
-        f"signals.{k}": v for k, v in metrics.items()
-    })
-    
-    return metrics
+    return results["scalar_metrics"]
 
 
 def validate_signals(
