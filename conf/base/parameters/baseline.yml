@@ -42,7 +42,15 @@ baseline:
     profile:
       look_ahead: 1440
       quantiles: [0.25, 0.75]
-  
+    distribution:
+      n_bars: 10
+
+    classification:
+      positive_labels: ['rise', 'up', 1, 'positive', 'buy']
+      negative_labels: ['fall', 'down', 0, 'negative', 'sell']
+      roc_n_thresholds: 100
+      chart_height: 900
+      chart_width: 1400
   labeling:
     name: "fixed_horizon"
     params:
