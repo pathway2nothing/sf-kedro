@@ -196,7 +196,6 @@ class SignalDistributionMetrics(SignalMetricsProcessor):
         self._add_histogram(fig, computed_metrics, plots_context)
         self._add_sorted_signals(fig, computed_metrics)
         self._add_rolling_signals(fig, computed_metrics, plots_context)
-        self._add_summary_annotation(fig, computed_metrics, plots_context)
         self._update_layout(fig, plots_context)
         
         return fig
@@ -389,36 +388,7 @@ class SignalDistributionMetrics(SignalMetricsProcessor):
                     row=3,
                     col=1,
                 )
-    
-    @staticmethod
-    def _add_summary_annotation(fig, metrics, plots_context):
-        """Add summary statistics annotation."""
-        quant = metrics["quant"]
-        
-        summary_text = (
-            f"<b>Summary</b><br>"
-            f"Pairs: {quant['total_pairs']} | "
-            f"Mean: {quant['mean_signals_per_pair']:.1f} | "
-            f"Median: {quant['median_signals_per_pair']:.1f} | "
-            f"Range: [{quant['min_signals_per_pair']}, {quant['max_signals_per_pair']}]"
-        )
-        
-        fig.add_annotation(
-            x=0.5,
-            y=1.02,
-            xref="paper",
-            yref="paper",
-            text=summary_text,
-            showarrow=False,
-            bordercolor="#cccccc",
-            borderwidth=1,
-            borderpad=6,
-            bgcolor="white",
-            opacity=0.95,
-            align="center",
-            font=dict(size=11, color="#333333"),
-        )
-    
+
     def _update_layout(self, fig, plots_context):
         """Update figure layout and axes."""
         fig.update_yaxes(
