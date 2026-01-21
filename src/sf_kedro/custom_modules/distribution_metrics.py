@@ -11,22 +11,14 @@ from loguru import logger
 from .signal_metrics import SignalMetricsProcessor
 import signalflow as sf
 
-
-
 @dataclass
 @sf.sf_component(name="distribution")
 class SignalDistributionMetrics(SignalMetricsProcessor):
-    """Analyze signal distribution across pairs and time.
+    """Analyze signal distribution across pairs and time."""
     
-    Provides insights into:
-    - How signals are distributed across different trading pairs
-    - Signal frequency patterns over time
-    - Concentration of trading activity
-    """
-    
-    n_bars: int = 1  # Number of bins for histogram
-    rolling_window_minutes: int = 60  # Window for rolling signal count
-    ma_window_hours: int = 12  # Moving average window in hours
+    n_bars: int = 10  # Змінено з 1 на 10 для кращого групування
+    rolling_window_minutes: int = 60
+    ma_window_hours: int = 12
     chart_height: int = 1200
     chart_width: int = 1400
     
@@ -55,60 +47,72 @@ class SignalDistributionMetrics(SignalMetricsProcessor):
         
         # Get statistics
         signal_counts = signals_per_pair["signal_count"].to_numpy()
-        min_count = signal_counts.min()
-        max_count = signal_counts.max()
+        min_count = int(signal_counts.min())
+        max_count = int(signal_counts.max())
         mean_count = signal_counts.mean()
         median_count = np.median(signal_counts)
+        n_pairs = len(signal_counts)
         
-        # Create histogram bins
-        if min_count == max_count:
-            bin_edges = [min_count - 0.5, max_count + 0.5]
-            bin_labels = [f"{int(min_count)}"]
-        else:
-            bin_edges = np.linspace(min_count, max_count, self.n_bars + 1)
-            bin_labels = []
-            for i in range(self.n_bars):
-                lower = int(np.floor(bin_edges[i]))
-                upper = int(np.ceil(bin_edges[i + 1]))
-                
-                if lower == upper:
-                    label = f"{bin_edges[i]:.1f}–{bin_edges[i + 1]:.1f}"
-                else:
-                    label = f"{lower}–{upper}"
-                
-                bin_labels.append(label)
-        
-        # Bin the data
-        binned = np.digitize(signal_counts, bin_edges[:-1]) - 1
-        binned = np.clip(binned, 0, len(bin_labels) - 1)
-        
-        # Group pairs by bins
-        grouped_data = []
-        for i, label in enumerate(bin_labels):
-            mask = binned == i
-            pairs_in_bin = signals_per_pair.filter(
-                pl.Series(mask)
-            )["pair"].to_list()
-            
-            if pairs_in_bin:
+        # ФІКС: Адаптивна кількість бінів
+        # Якщо пар мало — показуємо кожну окремо, якщо багато — групуємо
+        if n_pairs <= 15:
+            # Мало пар — не використовуємо histogram, просто bar chart
+            grouped_data = []
+            for row in signals_per_pair.iter_rows(named=True):
                 grouped_data.append({
-                    "category": label,
-                    "num_columns": len(pairs_in_bin),
-                    "columns_in_group": "<br>".join(pairs_in_bin),
+                    "category": row["pair"],
+                    "num_columns": row["signal_count"],
+                    "columns_in_group": row["pair"],
                 })
+            bin_labels = [g["category"] for g in grouped_data]
+            use_histogram = False
+        else:
+            # Багато пар — групуємо в біни
+            actual_n_bars = min(self.n_bars, max(3, n_pairs // 5))
+            
+            if min_count == max_count:
+                bin_edges = [min_count - 0.5, max_count + 0.5]
+                bin_labels = [f"{min_count}"]
+            else:
+                bin_edges = np.linspace(min_count, max_count, actual_n_bars + 1)
+                bin_labels = []
+                for i in range(actual_n_bars):
+                    lower = int(np.floor(bin_edges[i]))
+                    upper = int(np.ceil(bin_edges[i + 1]))
+                    if lower == upper:
+                        label = f"{lower}"
+                    else:
+                        label = f"{lower}–{upper}"
+                    bin_labels.append(label)
+            
+            binned = np.digitize(signal_counts, bin_edges[:-1]) - 1
+            binned = np.clip(binned, 0, len(bin_labels) - 1)
+            
+            grouped_data = []
+            for i, label in enumerate(bin_labels):
+                mask = binned == i
+                pairs_in_bin = signals_per_pair.filter(
+                    pl.Series(mask)
+                )["pair"].to_list()
+                
+                if pairs_in_bin:
+                    grouped_data.append({
+                        "category": label,
+                        "num_columns": len(pairs_in_bin),
+                        "columns_in_group": "<br>".join(pairs_in_bin),
+                    })
+            use_histogram = True
         
         # Compute rolling signal count over time
-        # First, create time series with 1-minute granularity
         signals_by_time = (
             signals_df
             .filter(pl.col("signal") != 0)
+            .sort("timestamp")
             .group_by_dynamic("timestamp", every="1m")
             .agg(pl.count().alias("signal_count"))
             .sort("timestamp")
         )
         
-        # Rolling sum using integer window (number of rows)
-        # Since we have 1-minute granularity, window = rolling_window_minutes
         signals_rolling = (
             signals_by_time
             .with_columns(
@@ -122,7 +126,6 @@ class SignalDistributionMetrics(SignalMetricsProcessor):
             )
         )
         
-        # Moving average for smoothing
         ma_window_minutes = self.ma_window_hours * 60
         if signals_rolling.height > ma_window_minutes:
             signals_rolling = signals_rolling.with_columns(
@@ -146,9 +149,9 @@ class SignalDistributionMetrics(SignalMetricsProcessor):
             "quant": {
                 "mean_signals_per_pair": float(mean_count),
                 "median_signals_per_pair": float(median_count),
-                "min_signals_per_pair": int(min_count),
-                "max_signals_per_pair": int(max_count),
-                "total_pairs": signals_per_pair.height,
+                "min_signals_per_pair": min_count,
+                "max_signals_per_pair": max_count,
+                "total_pairs": n_pairs,
                 "mean_rolling_signals": float(mean_rolling) if mean_rolling else 0.0,
                 "max_rolling_signals": int(max_rolling) if max_rolling else 0,
             },
@@ -163,10 +166,11 @@ class SignalDistributionMetrics(SignalMetricsProcessor):
             "bin_labels": bin_labels,
             "rolling_window": self.rolling_window_minutes,
             "ma_window": self.ma_window_hours,
+            "use_histogram": use_histogram,
         }
         
         logger.info(
-            f"Distribution computed: {signals_per_pair.height} pairs, "
+            f"Distribution computed: {n_pairs} pairs, "
             f"mean {mean_count:.1f} signals/pair, "
             f"max rolling {max_rolling} signals/{self.rolling_window_minutes}min"
         )
@@ -187,9 +191,9 @@ class SignalDistributionMetrics(SignalMetricsProcessor):
             logger.error("No metrics available for plotting")
             return None
         
-        fig = self._create_figure()
+        fig = self._create_figure(plots_context)
         
-        self._add_histogram(fig, computed_metrics)
+        self._add_histogram(fig, computed_metrics, plots_context)
         self._add_sorted_signals(fig, computed_metrics)
         self._add_rolling_signals(fig, computed_metrics, plots_context)
         self._add_summary_annotation(fig, computed_metrics, plots_context)
@@ -198,52 +202,86 @@ class SignalDistributionMetrics(SignalMetricsProcessor):
         return fig
     
     @staticmethod
-    def _create_figure():
+    def _create_figure(plots_context):
         """Create subplot structure."""
+        use_histogram = plots_context.get("use_histogram", True)
+        
+        if use_histogram:
+            title1 = "Pairs Distribution by Signal Count"
+        else:
+            title1 = "Signal Count per Pair"
+        
         return make_subplots(
             rows=3,
             cols=1,
             shared_xaxes=False,
             row_heights=[0.3, 0.35, 0.35],
-            vertical_spacing=0.08,
+            vertical_spacing=0.1,
             subplot_titles=[
-                "Pairs Distribution by Signal Count",
-                "Signal Count per Pair (Sorted)",
+                title1,
+                "Signal Count per Pair (Ranked)",
                 "Temporal Signal Density",
             ],
         )
     
     @staticmethod
-    def _add_histogram(fig, metrics):
-        """Add histogram of signal distribution."""
+    def _add_histogram(fig, metrics, plots_context):
+        """Add histogram/bar chart of signal distribution."""
         grouped = metrics["series"]["grouped"]
+        use_histogram = plots_context.get("use_histogram", True)
         
         if not grouped:
             return
         
         categories = [g["category"] for g in grouped]
-        counts = [g["num_columns"] for g in grouped]
-        hovertexts = [g["columns_in_group"] for g in grouped]
+        
+        if use_histogram:
+            # Histogram mode: показуємо кількість пар в кожному біні
+            counts = [g["num_columns"] for g in grouped]
+            hovertexts = [g["columns_in_group"] for g in grouped]
+            y_title = "Number of Pairs"
+            hovertemplate = (
+                "<b>Signal Range:</b> %{x}<br>"
+                "<b>Number of Pairs:</b> %{y}<br>"
+                "<b>Pairs:</b><br>%{customdata[0]}"
+                "<extra></extra>"
+            )
+            customdata = [[ht] for ht in hovertexts]
+        else:
+            # Bar chart mode: показуємо кількість сигналів для кожної пари
+            counts = [g["num_columns"] for g in grouped]  # тут це signal_count
+            y_title = "Signal Count"
+            hovertemplate = (
+                "<b>Pair:</b> %{x}<br>"
+                "<b>Signals:</b> %{y}"
+                "<extra></extra>"
+            )
+            customdata = None
+        
+        # Колірна шкала від світлого до темного
+        max_val = max(counts) if counts else 1
+        colors = [f"rgba(33, 113, 181, {0.4 + 0.6 * (c / max_val)})" for c in counts]
         
         fig.add_trace(
             go.Bar(
                 x=categories,
                 y=counts,
-                customdata=[[ht] for ht in hovertexts],
+                customdata=customdata,
                 marker=dict(
-                    color=counts,
-                    colorscale="Viridis",
-                    showscale=False,
-                    line=dict(color="black", width=1),
+                    color=colors,
+                    line=dict(color="#084594", width=1),
                 ),
-                hovertemplate=(
-                    "<b>Signal Range:</b> %{x}<br>"
-                    "<b>Number of Pairs:</b> %{y}<br>"
-                    "<b>Pairs:</b><br>%{customdata[0]}"
-                    "<extra></extra>"
-                ),
-                name="Pair Count",
+                hovertemplate=hovertemplate,
+                name="Distribution",
             ),
+            row=1,
+            col=1,
+        )
+        
+        # ФІКС: Цілі числа на Y-axis
+        fig.update_yaxes(
+            title_text=y_title,
+            dtick=1 if max(counts) <= 10 else None,  # Цілі числа якщо мало значень
             row=1,
             col=1,
         )
@@ -255,14 +293,18 @@ class SignalDistributionMetrics(SignalMetricsProcessor):
         
         pairs = signals_per_pair["pair"].to_list()
         counts = signals_per_pair["signal_count"].to_list()
+        n_pairs = len(pairs)
+        
+        # ФІКС: Цілі ранги
+        ranks = list(range(1, n_pairs + 1))
         
         fig.add_trace(
             go.Scatter(
-                x=list(range(len(pairs))),
+                x=ranks,
                 y=counts,
                 mode="lines+markers",
-                line=dict(color="indianred", width=2),
-                marker=dict(size=5, color="darkred"),
+                line=dict(color="#e6550d", width=2),
+                marker=dict(size=8 if n_pairs <= 20 else 5, color="#a63603"),
                 text=pairs,
                 hovertemplate=(
                     "<b>Rank:</b> %{x}<br>"
@@ -276,13 +318,23 @@ class SignalDistributionMetrics(SignalMetricsProcessor):
             col=1,
         )
         
-        # Add mean line
+        # Mean line
         mean_count = metrics["quant"]["mean_signals_per_pair"]
         fig.add_hline(
             y=mean_count,
-            line=dict(color="green", dash="dash", width=2),
+            line=dict(color="#31a354", dash="dash", width=2),
             annotation_text=f"Mean: {mean_count:.1f}",
             annotation_position="right",
+            annotation_font_color="#31a354",
+            row=2,
+            col=1,
+        )
+        
+        # ФІКС: X-axis з цілими числами
+        fig.update_xaxes(
+            title_text="Pair Rank",
+            dtick=1 if n_pairs <= 20 else None,
+            range=[0.5, n_pairs + 0.5],
             row=2,
             col=1,
         )
@@ -303,9 +355,9 @@ class SignalDistributionMetrics(SignalMetricsProcessor):
                 x=timestamps,
                 y=rolling_sum,
                 mode="lines",
-                line=dict(color="royalblue", width=1.5),
+                line=dict(color="#6baed6", width=1.5),
                 fill="tozeroy",
-                fillcolor="rgba(65, 105, 225, 0.15)",
+                fillcolor="rgba(107, 174, 214, 0.2)",
                 hovertemplate=(
                     "<b>Time:</b> %{x}<br>"
                     f"<b>{plots_context['rolling_window']}min Signals:</b> %{{y:.0f}}"
@@ -317,7 +369,7 @@ class SignalDistributionMetrics(SignalMetricsProcessor):
             col=1,
         )
         
-        # Add moving average if available
+        # Moving average
         if "ma" in signals_rolling.columns:
             ma_values = signals_rolling["ma"].to_list()
             if any(v is not None for v in ma_values):
@@ -326,7 +378,7 @@ class SignalDistributionMetrics(SignalMetricsProcessor):
                         x=timestamps,
                         y=ma_values,
                         mode="lines",
-                        line=dict(color="darkblue", width=2.5, dash="dash"),
+                        line=dict(color="#08519c", width=2.5),
                         hovertemplate=(
                             "<b>Time:</b> %{x}<br>"
                             f"<b>{plots_context['ma_window']}h MA:</b> %{{y:.1f}}"
@@ -344,51 +396,31 @@ class SignalDistributionMetrics(SignalMetricsProcessor):
         quant = metrics["quant"]
         
         summary_text = (
-            f"<b>Distribution Statistics</b><br>"
-            f"Total Pairs: {quant['total_pairs']}<br>"
-            f"Mean Signals/Pair: {quant['mean_signals_per_pair']:.1f}<br>"
-            f"Median Signals/Pair: {quant['median_signals_per_pair']:.1f}<br>"
-            f"Range: [{quant['min_signals_per_pair']}, {quant['max_signals_per_pair']}]<br>"
-            f"<br>"
-            f"<b>Temporal Density</b><br>"
-            f"Mean ({plots_context['rolling_window']}min): {quant['mean_rolling_signals']:.1f}<br>"
-            f"Max ({plots_context['rolling_window']}min): {quant['max_rolling_signals']}"
+            f"<b>Summary</b><br>"
+            f"Pairs: {quant['total_pairs']} | "
+            f"Mean: {quant['mean_signals_per_pair']:.1f} | "
+            f"Median: {quant['median_signals_per_pair']:.1f} | "
+            f"Range: [{quant['min_signals_per_pair']}, {quant['max_signals_per_pair']}]"
         )
         
         fig.add_annotation(
-            x=0.02,
-            y=0.98,
+            x=0.5,
+            y=1.02,
             xref="paper",
             yref="paper",
             text=summary_text,
             showarrow=False,
-            bordercolor="black",
+            bordercolor="#cccccc",
             borderwidth=1,
-            borderpad=8,
+            borderpad=6,
             bgcolor="white",
-            opacity=0.9,
-            align="left",
-            font=dict(size=11),
+            opacity=0.95,
+            align="center",
+            font=dict(size=11, color="#333333"),
         )
     
     def _update_layout(self, fig, plots_context):
         """Update figure layout and axes."""
-        fig.update_xaxes(
-            title_text="Signal Count Range",
-            row=1,
-            col=1,
-        )
-        fig.update_yaxes(
-            title_text="Number of Pairs",
-            row=1,
-            col=1,
-        )
-        
-        fig.update_xaxes(
-            title_text="Pair Rank (Sorted by Signal Count)",
-            row=2,
-            col=1,
-        )
         fig.update_yaxes(
             title_text="Signal Count",
             row=2,
@@ -401,19 +433,15 @@ class SignalDistributionMetrics(SignalMetricsProcessor):
             col=1,
         )
         fig.update_yaxes(
-            title_text=f"Signals ({plots_context['rolling_window']}min Rolling)",
+            title_text=f"Signals ({plots_context['rolling_window']}min)",
             row=3,
             col=1,
         )
         
         fig.update_layout(
             title=dict(
-                text=(
-                    "SignalFlow: Signal Distribution Analysis<br>"
-                    f"<sub>Temporal window: {plots_context['rolling_window']}min rolling, "
-                    f"{plots_context['ma_window']}h moving average</sub>"
-                ),
-                font=dict(color="black", size=16),
+                text="<b>Signal Distribution Analysis</b>",
+                font=dict(color="#333333", size=18),
                 x=0.5,
                 xanchor="center",
             ),
@@ -425,8 +453,15 @@ class SignalDistributionMetrics(SignalMetricsProcessor):
             legend=dict(
                 orientation="h",
                 yanchor="bottom",
-                y=1.02,
+                y=1.04,
                 xanchor="right",
                 x=1,
+                bgcolor="rgba(255,255,255,0.8)",
             ),
+            paper_bgcolor="#fafafa",
+            plot_bgcolor="#ffffff",
         )
+        
+        # Світла сітка для всіх графіків
+        fig.update_xaxes(gridcolor="#e8e8e8", zeroline=False)
+        fig.update_yaxes(gridcolor="#e8e8e8", zeroline=False)

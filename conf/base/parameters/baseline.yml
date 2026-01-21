@@ -42,6 +42,7 @@ baseline:
     profile:
       look_ahead: 1440
       quantiles: [0.25, 0.75]
+      
     distribution:
       n_bars: 10
 

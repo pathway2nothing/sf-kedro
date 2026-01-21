@@ -69,7 +69,7 @@ class SignalClassificationMetrics(SignalMetricsProcessor):
                 binary_labels[i] = 0
         
         return binary_labels
-    
+
     def compute(
         self,
         raw_data: sf.RawData,
@@ -115,17 +115,25 @@ class SignalClassificationMetrics(SignalMetricsProcessor):
         y_true = self._map_labels_to_binary(y_true_raw)
         
         # Convert predictions to binary (1 for positive signal, 0 for negative)
-        # Assuming signal values: 1 (buy), -1 (sell)
         y_pred_binary = (y_pred > 0).astype(int)
         
         logger.info(f"After conversion - Unique y_true: {np.unique(y_true)}, y_pred: {np.unique(y_pred_binary)}")
         
-        # Get signal strengths if available
+        # Get signal strengths if available, otherwise use absolute signal value
         if "strength" in predictions.columns:
             strengths = predictions["strength"].to_numpy()
         else:
-            # Use absolute signal value as strength
-            strengths = np.abs(y_pred)
+            strengths = np.abs(y_pred).astype(float)
+        
+        # ФІКС: Якщо всі strengths однакові, використовуємо y_pred_binary як "probability"
+        # для ROC (буде дегенерована, але коректна)
+        if np.std(strengths) < 1e-10:
+            logger.warning("All strengths are identical, ROC curve will be degenerate")
+            # Використовуємо prediction + невеликий шум для ROC
+            roc_scores = y_pred_binary.astype(float)
+        else:
+            # Нормалізуємо strengths до [0, 1] для ROC
+            roc_scores = (strengths - strengths.min()) / (strengths.max() - strengths.min())
         
         # Compute confusion matrix
         try:
@@ -152,60 +160,35 @@ class SignalClassificationMetrics(SignalMetricsProcessor):
         # Positive rate
         positive_rate = np.mean(y_true)
         
-        # ROC Curve
-        if len(np.unique(strengths)) > 1 and len(np.unique(y_true)) > 1:
-            thresholds = np.linspace(
-                strengths.min(),
-                strengths.max(),
-                self.roc_n_thresholds
-            )
-            tpr_list, fpr_list = [], []
-            
-            for threshold in thresholds:
-                threshold_preds = (strengths >= threshold).astype(int)
-                try:
-                    cm_t = confusion_matrix(y_true, threshold_preds)
-                    if cm_t.shape == (2, 2):
-                        tn_t, fp_t, fn_t, tp_t = cm_t.ravel()
-                    else:
-                        continue
-                except Exception:
-                    continue
-                    
-                tpr = tp_t / (tp_t + fn_t) if (tp_t + fn_t) > 0 else 0
-                fpr = fp_t / (fp_t + tn_t) if (fp_t + tn_t) > 0 else 0
-                tpr_list.append(tpr)
-                fpr_list.append(fpr)
-            
-            # Compute AUC
-            if len(tpr_list) > 1:
-                auc = np.trapz(tpr_list[::-1], fpr_list[::-1])
-            else:
+        # ROC Curve - використовуємо sklearn для коректності
+        from sklearn.metrics import roc_curve, roc_auc_score
+        
+        if len(np.unique(y_true)) > 1:
+            try:
+                fpr_arr, tpr_arr, thresholds_arr = roc_curve(y_true, roc_scores)
+                auc = roc_auc_score(y_true, roc_scores)
+            except Exception as e:
+                logger.warning(f"Could not compute ROC: {e}")
+                fpr_arr, tpr_arr, thresholds_arr = np.array([0, 1]), np.array([0, 1]), np.array([1, 0])
                 auc = 0.5
         else:
-            thresholds = np.array([strengths.min()])
-            tpr_list, fpr_list = [sensitivity], [1 - specificity]
+            fpr_arr, tpr_arr, thresholds_arr = np.array([0, 1]), np.array([0, 1]), np.array([1, 0])
             auc = 0.5
-            logger.warning("Not enough unique values for ROC curve, using defaults")
+            logger.warning("Only one class present, AUC undefined")
         
         # Log loss
         logloss = np.nan
         try:
-            if len(np.unique(y_true)) > 1 and len(np.unique(strengths)) > 1:
-                # Normalize strengths to probabilities [0, 1]
-                strength_range = strengths.max() - strengths.min()
-                if strength_range > 0:
-                    probs = (strengths - strengths.min()) / strength_range
-                    # Clip to avoid log(0)
-                    probs = np.clip(probs, 1e-10, 1 - 1e-10)
-                    logloss = log_loss(y_true=y_true, y_pred=probs, labels=[0, 1])
+            if len(np.unique(y_true)) > 1 and np.std(roc_scores) > 1e-10:
+                probs = np.clip(roc_scores, 1e-10, 1 - 1e-10)
+                logloss = log_loss(y_true=y_true, y_pred=probs, labels=[0, 1])
         except Exception as e:
             logger.warning(f"Could not compute log loss: {e}")
         
         # Strength statistics
         strength_mean = float(np.mean(strengths))
         strength_std = float(np.std(strengths)) if len(strengths) > 1 else 0.0
-        strength_quartiles = np.percentile(strengths, [25, 50, 75]).tolist()
+        strength_quartiles = np.percentile(strengths, [25, 50, 75]).tolist() if len(strengths) > 0 else [0, 0, 0]
         
         computed_metrics = {
             "quant": {
@@ -232,11 +215,12 @@ class SignalClassificationMetrics(SignalMetricsProcessor):
             },
             "series": {
                 "roc_curve": {
-                    "tpr": tpr_list,
-                    "fpr": fpr_list,
-                    "thresholds": thresholds.tolist(),
+                    "tpr": tpr_arr.tolist(),
+                    "fpr": fpr_arr.tolist(),
+                    "thresholds": thresholds_arr.tolist(),
                 },
                 "strength_quartiles": strength_quartiles,
+                "strengths_raw": strengths.tolist(),  # ДОДАНО для histogram
             },
         }
         
@@ -299,77 +283,28 @@ class SignalClassificationMetrics(SignalMetricsProcessor):
             vertical_spacing=0.15,
             horizontal_spacing=0.1,
         )
-    
-    @staticmethod
-    def _add_roc_curve(fig, metrics):
-        """Add ROC curve plot."""
-        roc = metrics["series"]["roc_curve"]
-        auc = metrics["quant"]["auc"]
-        
-        # ROC Curve
-        fig.add_trace(
-            go.Scatter(
-                x=roc["fpr"],
-                y=roc["tpr"],
-                mode="lines",
-                name="ROC Curve",
-                line=dict(color="blue", width=2),
-                hovertemplate=(
-                    "<b>FPR:</b> %{x:.3f}<br>"
-                    "<b>TPR:</b> %{y:.3f}"
-                    "<extra></extra>"
-                ),
-            ),
-            row=1,
-            col=1,
-        )
-        
-        # Random classifier line
-        fig.add_trace(
-            go.Scatter(
-                x=[0, 1],
-                y=[0, 1],
-                mode="lines",
-                name="Random",
-                line=dict(color="red", dash="dash", width=2),
-                showlegend=True,
-            ),
-            row=1,
-            col=1,
-        )
-        
-        # AUC annotation
-        fig.add_annotation(
-            x=0.5,
-            y=0.1,
-            text=f"<b>AUC = {auc:.3f}</b>",
-            showarrow=False,
-            font=dict(size=14, color="blue"),
-            bgcolor="rgba(255, 255, 255, 0.8)",
-            bordercolor="blue",
-            borderwidth=1,
-            borderpad=4,
-            row=1,
-            col=1,
-        )
-    
+
+
     @staticmethod
     def _add_confusion_matrix(fig, metrics):
         """Add confusion matrix heatmap."""
         cm = metrics["quant"]["confusion_matrix"]
         cm_values = [[cm["tn"], cm["fp"]], [cm["fn"], cm["tp"]]]
         total = sum(cm.values())
-        cm_pcts = [[val / total * 100 for val in row] for row in cm_values]
+        cm_pcts = [[val / total * 100 if total > 0 else 0 for val in row] for row in cm_values]
         
-        # Heatmap
+        # Світліша палітра для кращої читабельності тексту
         fig.add_trace(
             go.Heatmap(
                 z=cm_values,
                 x=["Predicted Negative", "Predicted Positive"],
                 y=["Actual Negative", "Actual Positive"],
-                colorscale="RdYlGn",
-                showscale=True,
-                colorbar=dict(x=0.95),
+                colorscale=[
+                    [0, "#f0f9e8"],
+                    [0.5, "#bae4bc"],
+                    [1, "#7bccc4"]
+                ],  # Зелена світла палітра
+                showscale=False,
                 hovertemplate=(
                     "<b>%{y} / %{x}</b><br>"
                     "Count: %{z}<br>"
@@ -380,51 +315,97 @@ class SignalClassificationMetrics(SignalMetricsProcessor):
             col=2,
         )
         
-        # Add text annotations
-        annotations = []
-        for i in range(2):
-            for j in range(2):
-                annotations.append(
-                    dict(
-                        text=f"<b>{cm_values[i][j]}</b><br>({cm_pcts[i][j]:.1f}%)",
-                        x=["Predicted Negative", "Predicted Positive"][j],
-                        y=["Actual Negative", "Actual Positive"][i],
-                        showarrow=False,
-                        font=dict(
-                            color="white" if cm_values[i][j] > total/4 else "black",
-                            size=12
-                        ),
-                    )
+        for i, actual in enumerate(["Actual Negative", "Actual Positive"]):
+            for j, predicted in enumerate(["Predicted Negative", "Predicted Positive"]):
+                fig.add_annotation(
+                    text=f"<b>{cm_values[i][j]}</b><br>({cm_pcts[i][j]:.1f}%)",
+                    x=predicted,
+                    y=actual,
+                    showarrow=False,
+                    font=dict(
+                        color="#1a1a1a",
+                        size=14,
+                    ),
+                    row=1,
+                    col=2,
                 )
+
+    @staticmethod
+    def _add_roc_curve(fig, metrics):
+        """Add ROC curve plot."""
+        roc = metrics["series"]["roc_curve"]
+        auc = metrics["quant"]["auc"]
         
-        for annotation in annotations:
-            fig.add_annotation(annotation, row=1, col=2)
-    
+        fig.add_trace(
+            go.Scatter(
+                x=roc["fpr"],
+                y=roc["tpr"],
+                mode="lines",
+                name="ROC Curve",
+                line=dict(color="#2171b5", width=2.5),
+                fill="tozeroy",
+                fillcolor="rgba(33, 113, 181, 0.1)",
+                hovertemplate=(
+                    "<b>FPR:</b> %{x:.3f}<br>"
+                    "<b>TPR:</b> %{y:.3f}"
+                    "<extra></extra>"
+                ),
+            ),
+            row=1,
+            col=1,
+        )
+        
+        fig.add_trace(
+            go.Scatter(
+                x=[0, 1],
+                y=[0, 1],
+                mode="lines",
+                name="Random",
+                line=dict(color="#969696", dash="dash", width=1.5),
+                showlegend=True,
+            ),
+            row=1,
+            col=1,
+        )
+        
+        fig.add_annotation(
+            x=0.6,
+            y=0.15,
+            text=f"<b>AUC = {auc:.3f}</b>",
+            showarrow=False,
+            font=dict(size=14, color="#2171b5"),
+            bgcolor="rgba(255, 255, 255, 0.9)",
+            bordercolor="#2171b5",
+            borderwidth=1,
+            borderpad=6,
+            row=1,
+            col=1,
+        )
+
     @staticmethod
     def _add_strength_distribution(fig, metrics):
         """Add signal strength distribution plot."""
-        mean = metrics["quant"]["strength_mean"]
-        std = metrics["quant"]["strength_std"]
+        if "strengths_raw" in metrics["series"]:
+            strengths = np.array(metrics["series"]["strengths_raw"])
+        else:
+            mean = metrics["quant"]["strength_mean"]
+            std = metrics["quant"]["strength_std"]
+            if std < 1e-10:
+                std = 0.01
+            strengths = np.random.normal(mean, std, 1000)
+        
         quartiles = metrics["series"]["strength_quartiles"]
         
-        # Handle case where std is 0
-        if std < 1e-10:
-            std = 0.01
-        
-        # Generate normal distribution curve
-        x_values = np.linspace(mean - 3*std, mean + 3*std, 200)
-        y_values = (1 / (std * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x_values - mean) / std) ** 2)
-        
-        # Distribution curve
         fig.add_trace(
-            go.Scatter(
-                x=x_values,
-                y=y_values,
-                mode="lines",
+            go.Histogram(
+                x=strengths,
                 name="Strength Distribution",
-                fill="tozeroy",
-                line=dict(color="green", width=2),
-                fillcolor="rgba(0, 255, 0, 0.1)",
+                nbinsx=30,
+                marker_color="#74c476",
+                marker_line_color="#238b45",
+                marker_line_width=1,
+                opacity=0.8,
+                histnorm="probability density",
                 hovertemplate=(
                     "<b>Strength:</b> %{x:.3f}<br>"
                     "<b>Density:</b> %{y:.4f}"
@@ -435,22 +416,24 @@ class SignalClassificationMetrics(SignalMetricsProcessor):
             col=1,
         )
         
-        # Quartile lines
-        quartile_colors = ["rgba(255,0,0,0.6)", "rgba(0,255,0,0.6)", "rgba(0,0,255,0.6)"]
-        quartile_names = ["Q1 (25%)", "Q2 (50%)", "Q3 (75%)"]
-        
-        for q_val, color, name in zip(quartiles, quartile_colors, quartile_names):
-            fig.add_vline(
-                x=q_val,
-                line_color=color,
-                line_dash="dash",
-                line_width=2,
-                annotation_text=name,
-                annotation_position="top",
-                row=2,
-                col=1,
-            )
-    
+        if len(set(quartiles)) > 1:
+            quartile_colors = ["#d94801", "#8856a7", "#d94801"] 
+            quartile_names = ["Q1", "Median", "Q3"]
+            
+            for q_val, color, name in zip(quartiles, quartile_colors, quartile_names):
+                fig.add_vline(
+                    x=q_val,
+                    line_color=color,
+                    line_dash="dash",
+                    line_width=1.5,
+                    annotation_text=name,
+                    annotation_position="top",
+                    annotation_font_size=10,
+                    annotation_font_color=color,
+                    row=2,
+                    col=1,
+                )
+
     @staticmethod
     def _add_metrics_table(fig, metrics):
         """Add metrics summary table."""
@@ -477,34 +460,38 @@ class SignalClassificationMetrics(SignalMetricsProcessor):
             go.Table(
                 header=dict(
                     values=["<b>Metric</b>", "<b>Value</b>"],
-                    fill_color="paleturquoise",
+                    fill_color="#e6f2ff",  
                     align="left",
-                    font=dict(size=12, color="black"),
-                    height=30,
+                    font=dict(size=12, color="#084594"),
+                    line_color="#b3d4ff",
+                    height=32,
                 ),
                 cells=dict(
                     values=list(zip(*table_data)),
-                    fill_color="lavender",
+                    fill_color="#f7fbff",  
                     align="left",
-                    font=dict(size=11, color="black"),
-                    height=25,
+                    font=dict(size=11, color="#333333"),
+                    line_color="#e6f2ff",
+                    height=26,
                 ),
             ),
             row=2,
             col=2,
         )
-    
+
     def _update_layout(self, fig):
         """Update figure layout and axes."""
         fig.update_xaxes(
             title_text="False Positive Rate",
             range=[0, 1],
+            gridcolor="#e0e0e0",
             row=1,
             col=1,
         )
         fig.update_yaxes(
             title_text="True Positive Rate",
             range=[0, 1],
+            gridcolor="#e0e0e0",
             row=1,
             col=1,
         )
@@ -522,20 +509,22 @@ class SignalClassificationMetrics(SignalMetricsProcessor):
         
         fig.update_xaxes(
             title_text="Signal Strength",
+            gridcolor="#e0e0e0",
             row=2,
             col=1,
         )
         fig.update_yaxes(
             title_text="Probability Density",
+            gridcolor="#e0e0e0",
             row=2,
             col=1,
         )
         
         fig.update_layout(
             title=dict(
-                text="SignalFlow: Classification Performance Analysis<br>"
-                     "<sub>ROC, Confusion Matrix, and Strength Distribution</sub>",
-                font=dict(color="black", size=16),
+                text="<b>Classification Performance Analysis</b><br>"
+                    "<sup>ROC Curve · Confusion Matrix · Strength Distribution</sup>",
+                font=dict(color="#333333", size=18),
                 x=0.5,
                 xanchor="center",
             ),
@@ -543,4 +532,11 @@ class SignalClassificationMetrics(SignalMetricsProcessor):
             width=self.chart_width,
             template="plotly_white",
             showlegend=True,
+            legend=dict(
+                bgcolor="rgba(255,255,255,0.8)",
+                bordercolor="#e0e0e0",
+                borderwidth=1,
+            ),
+            paper_bgcolor="#fafafa",
+            plot_bgcolor="#ffffff",
         )

@@ -47,7 +47,9 @@ class DagsHubHook:
         run_id = run_params.get("run_id", "manual")
         run_name = f"{pipeline_name}_{run_id}"
         
-        mlflow.start_run(run_name=run_name)
+        active_run = mlflow.active_run()
+        if active_run is None:
+            mlflow.start_run(run_name=run_name)
         
         try:
             import git
@@ -77,9 +79,10 @@ class DagsHubHook:
     ):
         """Finalize MLflow run."""
         try:
-            mlflow.set_tag("status", "success")
-            mlflow.end_run()
-            print("✓ MLflow run completed successfully")
+            if not hasattr(self, '_used_existing_run') or not self._used_existing_run:
+                mlflow.set_tag("status", "success")                
+                mlflow.end_run()
+                print("✓ MLflow run completed successfully")
         except Exception as e:
             print(f"Error ending MLflow run: {e}")
     
@@ -93,9 +96,10 @@ class DagsHubHook:
     ):
         """Log error and mark run as failed."""
         try:
-            mlflow.set_tag("status", "failed")
-            mlflow.log_param("error_message", str(error))
-            mlflow.end_run(status="FAILED")
-            print(f"✗ MLflow run failed: {error}")
+            if not hasattr(self, '_used_existing_run') or not self._used_existing_run:
+                mlflow.set_tag("status", "failed")
+                mlflow.log_param("error_message", str(error))
+                mlflow.end_run(status="FAILED")
+                print(f"✗ MLflow run failed: {error}")
         except Exception as e:
             print(f"Error logging failure: {e}")

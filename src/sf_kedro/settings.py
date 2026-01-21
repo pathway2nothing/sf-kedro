@@ -1,8 +1,5 @@
-# src/sf_kedro/settings.py
-
 from pathlib import Path
 
-# Load .env if exists
 env_file = Path(__file__).parent.parent.parent / ".env"
 if env_file.exists():
     try:

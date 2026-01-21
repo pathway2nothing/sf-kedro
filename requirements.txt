@@ -5,11 +5,9 @@ kedro~=1.1.1
 signalflow-trading==1.1.0
 signalflow-nn==1.1.0
 
-
 pyarrow
 kaleido
 plotly
-kedro-mlflow
 dagshub 
 mlflow
 kedro-datasets
