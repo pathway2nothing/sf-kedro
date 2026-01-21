@@ -38,7 +38,7 @@ def create_feature_set(feature_configs: List[Dict]) -> sf.feature.FeatureSet:
 
 
 def extract_validation_features(
-    raw_data: sf.core.RawData,
+    raw_data: sf.RawData,
     feature_configs: List[Dict],
 ) -> pl.DataFrame:
     """
@@ -55,7 +55,7 @@ def extract_validation_features(
     from dataclasses import dataclass
     
     @dataclass
-    @sf.core.sf_component(name='custom/log_return', override=True)
+    @sf.sf_component(name='custom/log_return', override=True)
     class LogReturnExtractor(sf.feature.FeatureExtractor):
         """Calculates logarithmic returns: ln(Pt / Pt-1)."""
         
@@ -88,7 +88,7 @@ def extract_validation_features(
     
     feature_set = sf.feature.FeatureSet(extractors=extractors)
     
-    raw_data_view = sf.core.RawDataView(raw_data)
+    raw_data_view = sf.RawDataView(raw_data)
     features_df = feature_set.extract(raw_data_view)
     
     # Log feature statistics

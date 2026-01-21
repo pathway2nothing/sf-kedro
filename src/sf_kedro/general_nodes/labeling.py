@@ -8,8 +8,8 @@ import signalflow as sf
 
 
 def create_labels(
-    raw_data: sf.core.RawData,
-    signals: sf.core.Signals,
+    raw_data: sf.RawData,
+    signals: sf.Signals,
     labeler_config: Dict,
 ) -> pl.DataFrame:
     """

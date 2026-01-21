@@ -1,6 +1,8 @@
-from sf_kedro.custom_modules.signal_metrics import SignalMetrics, SignalMetricsConfig
+from .signal_metrics import SignalMetricsProcessor, SignalPairPrice
+from .profile_metrics import SignalProfileMetrics
 
 __all__ = [
-    "SignalMetrics",
-    "SignalMetricsConfig"
+    "SignalMetricsProcessor",
+    "SignalPairPrice",
+    "SignalProfileMetrics"
 ]

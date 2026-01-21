@@ -12,7 +12,6 @@ from .feature_builder import (
 
 from .signal_processor import (
     detect_signals,
-    calculate_signal_metrics,
     validate_signals,
 )
 
@@ -32,6 +31,11 @@ from .backtest_engine import (
     calculate_backtest_metrics,
 )
 
+from .signal_metrics import (
+    compute_signal_metrics,
+    save_signal_plots,
+)
+
 __all__ = [
     # Data
     "download_market_data",
@@ -43,7 +47,6 @@ __all__ = [
     
     # Signals
     "detect_signals",
-    "calculate_signal_metrics",
     "validate_signals",
     
     # Labeling
@@ -58,4 +61,8 @@ __all__ = [
     # Backtest
     "run_backtest",
     "calculate_backtest_metrics",
+    
+    # Signal metrics
+    "compute_signal_metrics",
+    "save_signal_plots",
 ]

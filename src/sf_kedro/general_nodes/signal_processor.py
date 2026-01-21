@@ -5,15 +5,15 @@ import polars as pl
 import mlflow
 
 import signalflow as sf
-from sf_kedro.custom_modules import SignalMetrics, SignalMetricsConfig
+from sf_kedro.custom_modules import SignalMetricsProcessor
 import tempfile
 from pathlib import Path
 import plotly.io as pio
 
 def detect_signals(
-    raw_data: sf.core.RawData,
+    raw_data: sf.RawData,
     detector_config: Dict,
-) -> sf.core.Signals:
+) -> sf.Signals:
     """
     Detect trading signals.
     
@@ -26,9 +26,9 @@ def detect_signals(
     """
     detector_name = detector_config.get('name')
     
-    detector_type = sf.core.default_registry.get(component_type=sf.core.SfComponentType.DETECTOR, name=detector_name)
+    detector_type = sf.default_registry.get(component_type=sf.SfComponentType.DETECTOR, name=detector_name)
     detector: sf.detector.SignalDetector = detector_type(**detector_config.get('params', {}))
-    raw_data_view = sf.core.RawDataView(raw_data)
+    raw_data_view = sf.RawDataView(raw_data)
     signals = detector.run(raw_data_view=raw_data_view, context=None)
     
     mlflow.log_params({
@@ -39,60 +39,11 @@ def detect_signals(
     return signals
 
 
-def compute_signal_metrics(
-    raw_df: pl.DataFrame,
-    signals_df: pl.DataFrame,
-    params: dict
-) -> dict:
-    """
-    Compute signal metrics and log to MLflow
-    
-    Args:
-        raw_df: Raw OHLCV data
-        signals_df: Signals dataframe
-        params: Parameters from conf
-        
-    Returns:
-        Dictionary with scalar metrics
-    """
-    metrics_config = SignalMetricsConfig(
-        look_ahead=params.get("look_ahead", 1440),
-        quantiles=tuple(params.get("quantiles", [0.25, 0.75])),
-        pairs_to_plot=params.get("pairs_to_plot", ["BTCUSDT", "ETHUSDT"])
-    )
-    
-    metrics_computer = SignalMetrics(metrics_config)
-    
-    # Compute all metrics
-    results = metrics_computer.compute_all_metrics(raw_df, signals_df)
-    
-    # Log scalar metrics to MLflow
-    if mlflow.active_run():
-        mlflow.log_metrics(results["scalar_metrics"])
-        
-        # Log figures as artifacts
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
-            
-            for fig_name, fig in results["figures"].items():
-                # Save as HTML (interactive)
-                html_path = tmpdir_path / f"{fig_name}.html"
-                pio.write_html(fig, str(html_path))
-                mlflow.log_artifact(str(html_path), artifact_path="plots")
-                
-                # Save as PNG (static)
-                png_path = tmpdir_path / f"{fig_name}.png"
-                pio.write_image(fig, str(png_path), width=1400, height=900)
-                mlflow.log_artifact(str(png_path), artifact_path="plots")
-    
-    return results["scalar_metrics"]
-
-
 def validate_signals(
-    raw_signals: sf.core.Signals,
+    raw_signals: sf.Signals,
     features: pl.DataFrame,
     validator,
-) -> sf.core.Signals:
+) -> sf.Signals:
     """
     Apply validator to filter/score signals.
     

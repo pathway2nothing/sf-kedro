@@ -1,0 +1,27 @@
+store_path:
+  type: text.TextDataset
+  filepath: data/01_raw/store_path.txt
+
+raw_data:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/baseline/raw_data.pkl
+
+signals:
+  type: pickle.PickleDataset
+  filepath: data/03_primary/baseline/signals.pkl
+
+features:
+  type: pickle.PickleDataset
+  filepath: data/04_feature/baseline/features.pkl
+
+labels:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/baseline/labels.pkl
+
+signal_metrics_results:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/baseline/signal_metrics_results.pkl
+
+signal_metrics_plots:
+  type: pickle.PickleDataset
+  filepath: data/08_reporting/baseline/signal_metrics_plots.pkl

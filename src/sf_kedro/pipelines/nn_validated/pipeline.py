@@ -6,7 +6,7 @@ from sf_kedro.modules import (
     download_market_data,
     load_raw_data_from_storage,
     detect_signals,
-    calculate_signal_metrics,
+    compute_signal_metrics,
     extract_validation_features,
     create_labels,
     split_train_val_test,
@@ -54,7 +54,7 @@ def create_pipeline(**kwargs) -> Pipeline:
             tags=["signal_detection"],
         ),
         node(
-            func=calculate_signal_metrics,
+            func=compute_signal_metrics,
             inputs=["raw_signals", "raw_data"],
             outputs="raw_signal_metrics",
             name="calculate_raw_signal_metrics",
@@ -109,7 +109,7 @@ def create_pipeline(**kwargs) -> Pipeline:
             tags=["signal_validation"],
         ),
         node(
-            func=calculate_signal_metrics,
+            func=compute_signal_metrics,
             inputs=["validated_signals", "raw_data"],
             outputs="validated_signal_metrics",
             name="calculate_validated_signal_metrics",

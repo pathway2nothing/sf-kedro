@@ -9,8 +9,8 @@ import signalflow as sf
 
 
 def run_backtest(
-    raw_data: sf.core.RawData,
-    validated_signals: sf.core.Signals,
+    raw_data: sf.RawData,
+    validated_signals: sf.Signals,
     strategy_config: Dict,
 ) -> Dict:
     """

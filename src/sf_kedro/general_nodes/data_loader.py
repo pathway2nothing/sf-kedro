@@ -35,12 +35,12 @@ def download_market_data(
     store_params['db_path'] = Path(store_params['db_path'])
     store_params['db_path'].parent.mkdir(parents=True, exist_ok=True)
 
-    store: sf.data.raw_store.RawDataStore = sf.core.default_registry.get(
-        component_type=sf.core.SfComponentType.RAW_DATA_STORE,
+    store: sf.data.raw_store.RawDataStore = sf.default_registry.get(
+        component_type=sf.SfComponentType.RAW_DATA_STORE,
         name=store_type)(**store_params)
 
-    loader_type = sf.core.default_registry.get(
-        component_type=sf.core.SfComponentType.RAW_DATA_LOADER,
+    loader_type = sf.default_registry.get(
+        component_type=sf.SfComponentType.RAW_DATA_LOADER,
         name=loader_config.get('type', 'binance/spot'))
     
     loader_params = loader_config.get('params', {})
@@ -71,7 +71,7 @@ def load_raw_data_from_storage(
     period: Dict,
     pairs: List[str],
     store_path: str,
-) -> sf.core.RawData:
+) -> sf.RawData:
     db_path = Path(store_path)
 
     start = datetime(**period["start"])

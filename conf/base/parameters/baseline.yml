@@ -1,6 +1,28 @@
-# conf/base/parameters/baseline.yml
-
 baseline:
+  data:
+    store:
+      type: duckdb/spot
+      params:
+        db_path: "data/01_raw/market.duckdb"
+    
+    loader:
+      type: binance/spot      
+
+    pairs:
+      - BTCUSDT
+      - ETHUSDT
+      - SOLUSDT
+      - BNBUSDT
+      - XRPUSDT
+    period:
+      start:
+        year: 2025
+        month: 12
+        day: 1
+      end:
+        year: 2025
+        month: 12
+        day: 31
 
   detector:
     name: "sma_cross"
@@ -8,13 +30,26 @@ baseline:
       fast_period: 60
       slow_period: 720
       price_col: "close"
-  metrics:
-    look_ahead: 1440  
-    quantiles: [0.25, 0.75]
-    pairs_to_plot:
-      - BTCUSDT
-      - ETHUSDT
-      - BNBUSDT
+
+  signal_metrics:
+    pair:
+      pairs:
+        - BTCUSDT
+        - ETHUSDT
+        - SOLUSDT
+        - BNBUSDT
+        - XRPUSDT
+    profile:
+      look_ahead: 1440
+      quantiles: [0.25, 0.75]
+  
+  labeling:
+    name: "fixed_horizon"
+    params:
+      horizon: 120
+      price_col: "close"
+  
+  signal_plots_output_dir: "data/08_reporting/baseline"
 
   strategy:
     db_path: "data/07_model_output/strategy_baseline.duckdb"

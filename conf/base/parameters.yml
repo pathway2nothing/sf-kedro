@@ -1,27 +1,17 @@
-# conf/base/parameters.yml
+telegram:
+  enabled: true
+  bot_token: null  # Will use TELEGRAM_BOT_TOKEN env var
+  chat_id: null    # Will use TELEGRAM_CHAT_ID env var
+  image_width: 1400
+  image_height: 900
+  raise_on_error: false  # Continue pipeline even if Telegram fails
+  header_message: |
+    📊 <b>SignalFlow Analysis Complete</b>
+    
+    🔍 Strategy: {strategy_name}
+    📅 Period: {period}
+    📈 Signals: {n_signals}
+    💱 Pairs: {n_pairs}
+    ⏰ Generated: {timestamp}
 
-data:
-  store:
-    type: duckdb/spot
-    params:
-      db_path: "data/01_raw/market.duckdb"
-  
-  loader:
-    type: binance/spot      
-
-  pairs:
-    - BTCUSDT
-    - ETHUSDT
-    - SOLUSDT
-    - BNBUSDT
-    - XRPUSDT
-  period:
-    start:
-      year: 2025
-      month: 12
-      day: 1
-    end:
-      year: 2025
-      month: 12
-      day: 31
-
+strategy_name: "SMA_Crossover_Baseline"

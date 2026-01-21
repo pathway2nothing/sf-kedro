@@ -2,8 +2,8 @@ ipython>=8.10
 jupyterlab>=3.0
 notebook
 kedro~=1.1.1
-signalflow-trading==0.2.1
-signalflow-nn==0.2.1
+signalflow-trading==1.1.0
+signalflow-nn==1.1.0
 
 
 pyarrow
@@ -13,3 +13,4 @@ kedro-mlflow
 dagshub 
 mlflow
 kedro-datasets
+pyTelegramBotAPI==4.30.0
