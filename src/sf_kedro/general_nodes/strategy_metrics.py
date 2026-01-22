@@ -10,14 +10,18 @@ from loguru import logger
 import signalflow as sf
 from signalflow import StrategyState, RawData
 from sf_kedro.custom_modules.strategy_metrics import *
-
+from sf_kedro.utils.telegram import send_plots_to_telegram
 
 FigureLike = Union[go.Figure, List[go.Figure]]
 
 
 def compute_strategy_metrics(
     backtest_results: Dict[str, Any],
-    params: Dict[str, Dict[str, Any]],
+    params: Dict[str, Dict[str, Any]],    
+    telegram_config: Dict[str, Any] | None = None,
+    strategy_name: Optional[str] = None,
+    raw_data: Optional[RawData] = None,
+    state: Optional[StrategyState] = None,
 ) -> Tuple[Dict[str, Any], Dict[str, FigureLike]]:
 
     logger.info(f"Computing strategy metrics for {len(params)} metric types")
@@ -30,13 +34,6 @@ def compute_strategy_metrics(
             name=metric_type,
         )
         metrics.append(metric_cls(**(metric_params or {})))
-
-    state = (
-        backtest_results.get("state")
-        or backtest_results.get("final_state")
-        or backtest_results.get("strategy_state")
-    )
-    raw_data = backtest_results.get("raw_data") or backtest_results.get("raw")
 
     summary = _build_strategy_summary(backtest_results)
 
@@ -80,7 +77,7 @@ def compute_strategy_metrics(
 
     if telegram_config and telegram_config.get("enabled", False):
         try:
-            logger.info("Preparing Telegram notification")
+            full_header = f"Strategy: {strategy_name}" if strategy_name else "Strategy Metrics"
             send_plots_to_telegram(
                 plots=plots,
                 bot_token=telegram_config.get("bot_token"),
@@ -89,7 +86,6 @@ def compute_strategy_metrics(
                 image_width=telegram_config.get("image_width", 1400),
                 image_height=telegram_config.get("image_height", 900),
             )
-            logger.info("Successfully sent Telegram notification")
         except Exception as e:
             logger.error(f"Failed to send Telegram notification: {e}")
             if telegram_config.get("raise_on_error", False):

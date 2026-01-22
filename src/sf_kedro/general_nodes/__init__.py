@@ -28,7 +28,7 @@ from .validator_factory import (
 
 from .backtest_engine import (
     run_backtest,
-    calculate_backtest_metrics,
+    log_backtest_metrics,
 )
 
 from .signal_metrics import (
@@ -66,7 +66,7 @@ __all__ = [
     
     # Backtest
     "run_backtest",
-    "calculate_backtest_metrics",
+    "log_backtest_metrics",
     
     # Signal metrics
     "compute_signal_metrics",

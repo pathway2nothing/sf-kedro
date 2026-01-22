@@ -70,7 +70,6 @@ def run_pipeline(pipeline_name: str = "baseline", node_names: str = None, env: s
     print(f"{'='*60}\n")
     
     try:
-        # Bootstrap from the project root
         metadata = bootstrap_project(project_root)
         
         with KedroSession.create(
@@ -78,16 +77,13 @@ def run_pipeline(pipeline_name: str = "baseline", node_names: str = None, env: s
             env=env
         ) as session:
             
-            # Run the pipeline
             if node_names:
-                # Run specific nodes
                 nodes = [n.strip() for n in node_names.split(",")]
                 session.run(
                     pipeline_name=pipeline_name,
                     node_names=nodes
                 )
             else:
-                # Run entire pipeline
                 session.run(pipeline_name=pipeline_name)
             
             print(f"\n{'='*60}")

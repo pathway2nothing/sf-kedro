@@ -9,7 +9,7 @@ from sf_kedro.general_nodes import (
     compute_signal_metrics,
     save_signal_plots,
     run_backtest,
-    calculate_backtest_metrics, 
+    log_backtest_metrics, 
     save_strategy_plots,
     compute_strategy_metrics
 )
@@ -78,22 +78,26 @@ def create_pipeline(**kwargs) -> Pipeline:
             node(
                 func=run_backtest,
                 inputs=["raw_data", "signals", "params:baseline.strategy"],
-                outputs="backtest_results",
+                outputs=["backtest_results", "backtest_state"],
                 name="run_backtest",
                 tags=["backtesting"],
             ),
             node(
-                func=calculate_backtest_metrics,
+                func=log_backtest_metrics,
                 inputs="backtest_results",
                 outputs="backtest_metrics",
-                name="calculate_backtest_metrics",
+                name="log_backtest_metrics",
                 tags=["metrics", "backtest_metrics"],
             ),
             node(
                 func=compute_strategy_metrics,
                 inputs={
                     "backtest_results": "backtest_results",
-                    "params": "params:baseline.strategy_metrics"
+                    "params": "params:baseline.strategy_metrics",
+                    "telegram_config": "params:telegram",
+                    "strategy_name": "params:strategy_name",
+                    "raw_data": "raw_data",
+                    "state": "backtest_state",
                 },
                 outputs=["strategy_metrics_results", "strategy_plots"], 
                 name="compute_strategy_metrics",
@@ -111,6 +115,7 @@ def create_pipeline(**kwargs) -> Pipeline:
             ),
         ]
     )
+
     return pipeline(
         base_pipeline,
         namespace="baseline",

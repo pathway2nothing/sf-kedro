@@ -9,6 +9,7 @@ from loguru import logger
 import signalflow as sf
 from signalflow.analytic.strategy import *
 
+
 def run_backtest(
     raw_data: sf.RawData,
     validated_signals: sf.Signals,
@@ -77,10 +78,10 @@ def run_backtest(
     logger.info("Recent Trades:")
     logger.info(results['trades_df'].tail(10))
 
-    return results
+    return results, final_state
 
 
-def calculate_backtest_metrics(backtest_results: Dict) -> Dict:
+def log_backtest_metrics(backtest_results: Dict) -> Dict:
     """
     Calculate and log backtest metrics.
     

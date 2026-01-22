@@ -33,3 +33,9 @@ strategy_metrics_results:
 strategy_metrics_plots:
   type: pickle.PickleDataset
   filepath: data/08_reporting/baseline/strategy_metrics_plots.pkl
+
+backtest_state:
+  type: pickle.PickleDataset
+  filepath: data/07_model_output/baseline/backtest_state.pkl
+
+  
