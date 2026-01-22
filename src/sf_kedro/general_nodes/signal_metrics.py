@@ -7,10 +7,9 @@ from pathlib import Path
 from datetime import datetime
 from loguru import logger
 import signalflow as sf
-from sf_kedro.custom_modules import SignalMetricsProcessor
 from sf_kedro.utils.telegram import send_plots_to_telegram
-
-
+from sf_kedro.custom_modules import *
+from signalflow.analytic.signals import *
 def compute_signal_metrics(
     params: Dict[str, Dict[str, Any]],
     raw_data: sf.RawData,
@@ -35,7 +34,7 @@ def compute_signal_metrics(
     """
     logger.info(f"Computing signal metrics for {len(params)} metric types")
     
-    metrics: List[SignalMetricsProcessor] = []
+    metrics: List[sf.analytic.SignalMetric] = []
     for metric_type, metric_params in params.items():
         logger.debug(f"Loading metric processor: {metric_type}")
         metric_processor = sf.get_component(

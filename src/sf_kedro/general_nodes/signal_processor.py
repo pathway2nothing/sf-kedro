@@ -5,7 +5,6 @@ import polars as pl
 import mlflow
 
 import signalflow as sf
-from sf_kedro.custom_modules import SignalMetricsProcessor
 import tempfile
 from pathlib import Path
 import plotly.io as pio

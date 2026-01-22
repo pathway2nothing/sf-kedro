@@ -17,11 +17,10 @@ from sklearn.metrics import (
 )
 
 import signalflow as sf
-from .signal_metrics import SignalMetricsProcessor
 
 @dataclass
 @sf.sf_component(name="classification")
-class SignalClassificationMetrics(SignalMetricsProcessor):
+class SignalClassificationMetric(sf.analytic.SignalMetric):
     """Analyze signal classification performance against labels.
     
     Computes standard classification metrics including:

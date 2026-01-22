@@ -8,11 +8,10 @@ from plotly.subplots import make_subplots
 from loguru import logger
 
 import signalflow as sf
-from .signal_metrics import SignalMetricsProcessor
 
 @dataclass
 @sf.sf_component(name="profile")
-class SignalProfileMetrics(SignalMetricsProcessor):
+class SignalProfileMetric(sf.analytic.SignalMetric):
     """Analyze post-signal price behavior profiles with statistical aggregations.
     
     Computes mean, median, percentile profiles of price changes after signals,

@@ -89,6 +89,26 @@ def create_pipeline(**kwargs) -> Pipeline:
                 name="calculate_backtest_metrics",
                 tags=["metrics", "backtest_metrics"],
             ),
+            node(
+                func=compute_strategy_metrics,
+                inputs={
+                    "backtest_results": "backtest_results",
+                    "params": "params:baseline.strategy_metrics"
+                },
+                outputs=["strategy_metrics_results", "strategy_plots"], 
+                name="compute_strategy_metrics",
+                tags=["metrics", "strategy_metrics"],
+            ),
+            node(
+                func=save_strategy_plots,
+                inputs={
+                    "plots": "strategy_plots",
+                    "output_dir": "params:baseline.strategy_plots_output_dir"
+                },
+                outputs=None,
+                name="save_strategy_plots",
+                tags=["reporting"],
+            ),
         ]
     )
     return pipeline(
@@ -105,7 +125,7 @@ def create_pipeline(**kwargs) -> Pipeline:
             "params:baseline.signal_plots_output_dir",
             "params:baseline.strategy",
             "params:baseline.strategy_metrics",
-            "params:baseline.strategy_plots_output_dir  ",          
+            "params:baseline.strategy_plots_output_dir",          
             "params:telegram",
             "params:strategy_name",
         }

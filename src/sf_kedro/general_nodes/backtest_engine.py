@@ -4,9 +4,10 @@ from typing import Dict
 from pathlib import Path
 import polars as pl
 import mlflow
+from loguru import logger
 
 import signalflow as sf
-
+from signalflow.analytic.strategy import *
 
 def run_backtest(
     raw_data: sf.RawData,
@@ -43,31 +44,19 @@ def run_backtest(
     entry_rules = []
     for rule_config in strategy_config.get('entry_rules', []):
         rule_type = rule_config.pop('type')
-        if rule_type == 'signal_entry':
-            from signalflow.strategy.component.entry import SignalEntryRule
-            entry_rules.append(SignalEntryRule(**rule_config))
+        entry_rules.append(sf.get_component(type=sf.SfComponentType.STRATEGY_ENTRY_RULE, name=rule_type)(**rule_config))
     
     exit_rules = []
     for rule_config in strategy_config.get('exit_rules', []):
         rule_type = rule_config.pop('type')
-        if rule_type == 'tp_sl':
-            from signalflow.strategy.component.exit import TakeProfitStopLossExit
-            exit_rules.append(TakeProfitStopLossExit(**rule_config))
+        exit_rules.append(sf.get_component(type=sf.SfComponentType.STRATEGY_EXIT_RULE, name=rule_type)(**rule_config))
     
-    from signalflow.strategy.component.metric import (
-        TotalReturnMetric, BalanceAllocationMetric, 
-        DrawdownMetric, WinRateMetric, SharpeRatioMetric
-    )
-    
-    initial_capital = strategy_config.get('initial_capital', 10000.0)
-    
-    metrics = [
-        TotalReturnMetric(initial_capital=initial_capital),
-        BalanceAllocationMetric(initial_capital=initial_capital),
-        DrawdownMetric(),
-        WinRateMetric(),
-        SharpeRatioMetric(initial_capital=initial_capital, window_size=100),
-    ]
+    metrics = [] 
+    for metric_config in strategy_config.get('metrics', []):
+        metric_type = metric_config.pop('type')
+        metrics.append(sf.get_component(type=sf.SfComponentType.STRATEGY_METRIC, name=metric_type)(**metric_config))
+
+    initial_capital = strategy_config.get('initial_capital', 100000)
     
     runner = OptimizedBacktestRunner(
         strategy_id=strategy_config.get('strategy_id', 'default_strategy'),
@@ -81,7 +70,13 @@ def run_backtest(
     
     final_state = runner.run(raw_data, validated_signals)
     results = runner.get_results()
-    
+
+    logger.success(f"\nFinal Equity: ${results['final_equity']:.2f}")
+    logger.info(f"Total Return: {results['final_return']*100:.2f}%")
+    logger.info(f"Trades Executed: {results['total_trades']}")
+    logger.info("Recent Trades:")
+    logger.info(results['trades_df'].tail(10))
+
     return results
 
 

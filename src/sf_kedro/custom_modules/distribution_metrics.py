@@ -8,12 +8,11 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from loguru import logger
 
-from .signal_metrics import SignalMetricsProcessor
 import signalflow as sf
 
 @dataclass
 @sf.sf_component(name="distribution")
-class SignalDistributionMetrics(SignalMetricsProcessor):
+class SignalDistributionMetric(sf.analytic.SignalMetric):
     """Analyze signal distribution across pairs and time."""
     
     n_bars: int = 10  # Змінено з 1 на 10 для кращого групування
