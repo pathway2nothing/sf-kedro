@@ -36,6 +36,12 @@ from .signal_metrics import (
     save_signal_plots,
 )
 
+from .strategy_metrics import (
+    compute_strategy_metrics, 
+    save_strategy_plots,
+
+)
+
 __all__ = [
     # Data
     "download_market_data",
@@ -65,4 +71,7 @@ __all__ = [
     # Signal metrics
     "compute_signal_metrics",
     "save_signal_plots",
+
+    "compute_strategy_metrics", 
+    "save_strategy_plots",
 ]

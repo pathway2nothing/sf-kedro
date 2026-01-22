@@ -25,3 +25,11 @@ signal_metrics_results:
 signal_metrics_plots:
   type: pickle.PickleDataset
   filepath: data/08_reporting/baseline/signal_metrics_plots.pkl
+
+strategy_metrics_results:
+  type: pickle.PickleDataset
+  filepath: data/08_reporting/baseline/strategy_metrics_results.pkl
+
+strategy_metrics_plots:
+  type: pickle.PickleDataset
+  filepath: data/08_reporting/baseline/strategy_metrics_plots.pkl

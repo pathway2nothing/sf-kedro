@@ -80,3 +80,10 @@ baseline:
       - type: "tp_sl"
         take_profit_pct: 0.02
         stop_loss_pct: 0.02
+
+  strategy_metrics:
+    chart_height: 900
+    chart_width: 1400
+    top_n_pairs: 12
+
+  strategy_plots_output_dir: "data/08_reporting/baseline/strategy"

@@ -8,6 +8,10 @@ from sf_kedro.general_nodes import (
     create_labels,
     compute_signal_metrics,
     save_signal_plots,
+    run_backtest,
+    calculate_backtest_metrics, 
+    save_strategy_plots,
+    compute_strategy_metrics
 )
 
 
@@ -71,26 +75,20 @@ def create_pipeline(**kwargs) -> Pipeline:
                 outputs=None,
                 name="save_signal_plots",
             ),
-            # node(
-            #     func=compute_signal_metrics,
-            #     inputs=[
-            #         "params:baseline.signal_metrics",
-            #         "raw_data",
-            #         "signals",
-            #         "labels",
-            #     ],
-            #     outputs=["signal_metrics_results", "signal_metrics_plots"],
-            #     name="compute_signal_metrics_node",
-            # ),
-            # node(
-            #     func=save_signal_plots,
-            #     inputs=[
-            #         "signal_metrics_plots",
-            #         "params:baseline.signal_plots_output_dir",
-            #     ],
-            #     outputs=None,
-            #     name="save_signal_plots_node",
-            # ),
+            node(
+                func=run_backtest,
+                inputs=["raw_data", "signals", "params:baseline.strategy"],
+                outputs="backtest_results",
+                name="run_backtest",
+                tags=["backtesting"],
+            ),
+            node(
+                func=calculate_backtest_metrics,
+                inputs="backtest_results",
+                outputs="backtest_metrics",
+                name="calculate_backtest_metrics",
+                tags=["metrics", "backtest_metrics"],
+            ),
         ]
     )
     return pipeline(
@@ -105,6 +103,9 @@ def create_pipeline(**kwargs) -> Pipeline:
             "params:baseline.labeling",
             "params:baseline.signal_metrics",
             "params:baseline.signal_plots_output_dir",
+            "params:baseline.strategy",
+            "params:baseline.strategy_metrics",
+            "params:baseline.strategy_plots_output_dir  ",          
             "params:telegram",
             "params:strategy_name",
         }
