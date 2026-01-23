@@ -228,242 +228,6 @@ class StrategyMainResult(sf.analytic.StrategyMetric):
 
 
 
-# from dataclasses import dataclass, field
-# from typing import Any, Dict, List
-
-# from loguru import logger
-# import polars as pl
-# import plotly.graph_objects as go
-# from plotly.subplots import make_subplots
-
-# from signalflow.core import StrategyState, sf_component
-# from signalflow.analytic.base import StrategyMetric
-# from signalflow import RawData
-
-
-# @dataclass
-# @sf_component(name="result_pair", override=True)
-# class StrategyPairResult(StrategyMetric):
-#     pairs: List[str] = field(default_factory=list)
-#     price_col: str = "close"
-#     ts_col: str = "timestamp"   # column in raw spot df
-#     tz: str = "UTC"             # for display if you want later
-
-#     def compute(self, state: StrategyState, prices: dict[str, float], **kwargs) -> Dict[str, float]:
-#         return {}
-
-#     def plot(
-#         self,
-#         results: dict,
-#         state: StrategyState | None = None,
-#         raw_data: RawData | None = None,
-#         **kwargs,
-#     ) -> list[go.Figure] | go.Figure | None:
-#         if not self.pairs:
-#             logger.warning("pairs is empty for StrategyPairResult.plot")
-#             return None
-
-#         figs: list[go.Figure] = []
-#         for pair in self.pairs:
-#             try:
-#                 fig = self._plot_pair(pair=pair, results=results, state=state, raw_data=raw_data, **kwargs)
-#                 if fig is not None:
-#                     figs.append(fig)
-#             except Exception as e:
-#                 logger.exception(f"Failed to plot pair={pair}: {e}")
-#         return figs
-
-#     def _plot_pair(
-#         self,
-#         pair: str,
-#         results: dict,
-#         state: StrategyState | None = None,
-#         raw_data: RawData | None = None,
-#         **kwargs,
-#     ) -> go.Figure | None:
-#         df = self._get_pair_df(results=results, raw_data=raw_data, pair=pair)
-#         if df is None or df.height == 0:
-#             logger.warning(f"No data to plot for pair={pair}")
-#             return None
-
-#         if self.price_col not in df.columns:
-#             logger.warning(f"price_col='{self.price_col}' not found for pair={pair}")
-#             return None
-
-#         if self.ts_col not in df.columns:
-#             logger.warning(f"ts_col='{self.ts_col}' not found for pair={pair}")
-#             return None
-
-#         # ---- normalize timestamps to datetime ----
-#         # Accept int seconds / ms / datetime; convert to pl.Datetime
-#         ts = df.get_column(self.ts_col)
-
-#         if ts.dtype in (pl.Int64, pl.Int32, pl.UInt64, pl.UInt32):
-#             # heuristic: ms vs sec
-#             # if values look like 13 digits -> ms
-#             # NOTE: safe minimal heuristic
-#             max_v = ts.max()
-#             time_unit = "ms" if (max_v is not None and int(max_v) > 10_000_000_000) else "s"
-#             ts_dt = ts.cast(pl.Int64).cast(pl.Datetime(time_unit=time_unit))
-#             ts_epoch_s = ts.cast(pl.Int64) // (1000 if time_unit == "ms" else 1)
-#         elif ts.dtype == pl.Datetime:
-#             ts_dt = ts
-#             ts_epoch_s = ts.dt.epoch(time_unit="s")
-#         else:
-#             # last resort: try parse strings
-#             ts_dt = ts.cast(pl.Utf8).str.to_datetime(strict=False)
-#             ts_epoch_s = ts_dt.dt.epoch(time_unit="s")
-
-#         price = df.get_column(self.price_col).cast(pl.Float64)
-
-#         # Sort by time (critical for nearest lookup)
-#         tmp = pl.DataFrame({"ts_dt": ts_dt, "ts_s": ts_epoch_s, "price": price}).sort("ts_s")
-#         ts_dt_list = tmp["ts_dt"].to_list()
-#         ts_s_list = tmp["ts_s"].to_list()
-#         price_list = tmp["price"].to_list()
-
-#         fig = make_subplots(
-#             rows=2, cols=1,
-#             shared_xaxes=True,
-#             vertical_spacing=0.07,
-#             row_heights=[0.7, 0.3],
-#             subplot_titles=(f"{pair} Price + Trades", "Position Size"),
-#         )
-
-#         fig.add_trace(go.Scatter(x=ts_dt_list, y=price_list, mode="lines", name="Price"), row=1, col=1)
-
-#         if state is None:
-#             fig.update_layout(template="plotly_white", height=700, hovermode="x unified", showlegend=True)
-#             fig.update_yaxes(title_text="Price", row=1, col=1)
-#             fig.update_yaxes(title_text="Size", row=2, col=1)
-#             fig.update_xaxes(title_text="Date", row=2, col=1)
-#             return fig
-
-#         trades = self._extract_trades(state=state, pair=pair)
-
-#         # ---- helpers: nearest price by epoch seconds ----
-#         def nearest_price(epoch_s: int) -> float | None:
-#             if epoch_s is None:
-#                 return None
-#             # binary search on sorted ts_s_list
-#             import bisect
-#             i = bisect.bisect_left(ts_s_list, int(epoch_s))
-#             if i <= 0:
-#                 return float(price_list[0])
-#             if i >= len(ts_s_list):
-#                 return float(price_list[-1])
-#             # choose closest neighbor
-#             left_t, right_t = ts_s_list[i - 1], ts_s_list[i]
-#             left_p, right_p = price_list[i - 1], price_list[i]
-#             return float(left_p if abs(epoch_s - left_t) <= abs(right_t - epoch_s) else right_p)
-
-#         entry_x, entry_y, exit_x, exit_y = [], [], [], []
-#         # position size as step series
-#         events: list[tuple[int, float]] = []
-
-#         for tr in trades:
-#             et = tr.get("entry_ts")
-#             xt = tr.get("exit_ts")
-#             size = float(tr.get("size", 0.0) or 0.0)
-
-#             if et is not None:
-#                 entry_x.append(self._epoch_to_datetime(et))
-#                 entry_y.append(nearest_price(et))
-#                 events.append((int(et), size))
-
-#             if xt is not None:
-#                 exit_x.append(self._epoch_to_datetime(xt))
-#                 exit_y.append(nearest_price(xt))
-#                 events.append((int(xt), 0.0))
-
-#         if entry_x:
-#             fig.add_trace(
-#                 go.Scatter(
-#                     x=entry_x, y=entry_y,
-#                     mode="markers",
-#                     name="Entry",
-#                     marker=dict(size=9, symbol="triangle-up"),
-#                 ),
-#                 row=1, col=1,
-#             )
-
-#         if exit_x:
-#             fig.add_trace(
-#                 go.Scatter(
-#                     x=exit_x, y=exit_y,
-#                     mode="markers",
-#                     name="Exit",
-#                     marker=dict(size=9, symbol="triangle-down"),
-#                 ),
-#                 row=1, col=1,
-#             )
-
-#         if events:
-#             events.sort(key=lambda x: x[0])
-#             size_x = [self._epoch_to_datetime(t) for t, _ in events]
-#             size_y = [v for _, v in events]
-
-#             fig.add_trace(
-#                 go.Scatter(
-#                     x=size_x, y=size_y,
-#                     mode="lines",
-#                     name="Position Size",
-#                     line_shape="hv",  # step
-#                 ),
-#                 row=2, col=1,
-#             )
-
-#         fig.update_layout(template="plotly_white", height=750, hovermode="x unified", showlegend=True)
-#         fig.update_yaxes(title_text="Price", row=1, col=1)
-#         fig.update_yaxes(title_text="Size", row=2, col=1)
-#         fig.update_xaxes(title_text="Date", row=2, col=1)
-#         return fig
-
-#     def _get_pair_df(self, *, results: dict, raw_data: RawData | None, pair: str) -> pl.DataFrame | None:
-#         if raw_data is None:
-#             return None
-#         spot = raw_data.get("spot")
-#         if isinstance(spot, pl.DataFrame) and "pair" in spot.columns:
-#             return spot.filter(pl.col("pair") == pair)
-#         return None
-
-#     def _epoch_to_datetime(self, t: int):
-#         import datetime as dt
-#         return dt.datetime.utcfromtimestamp(int(t))
-
-#     def _extract_trades(self, *, state: StrategyState, pair: str) -> list[dict[str, Any]]:
-#         out: list[dict[str, Any]] = []
-#         positions = getattr(getattr(state, "portfolio", None), "positions", None)
-#         if not isinstance(positions, dict):
-#             return out
-
-#         for p in positions.values():
-#             if getattr(p, "pair", None) != pair:
-#                 continue
-
-#             entry_time = getattr(p, "entry_time", None)
-#             exit_time = getattr(p, "last_time", None) if getattr(p, "is_closed", False) else None
-
-#             entry_ts = self._to_epoch(entry_time)
-#             exit_ts = self._to_epoch(exit_time)
-
-#             size = getattr(p, "quantity", None)
-#             if size is None:
-#                 size = getattr(p, "size", 0.0)
-
-#             out.append({"entry_ts": entry_ts, "exit_ts": exit_ts, "size": float(size or 0.0)})
-#         return out
-
-#     def _to_epoch(self, t: Any) -> int | None:
-#         if t is None:
-#             return None
-#         if hasattr(t, "timestamp"):
-#             return int(t.timestamp())
-#         if isinstance(t, int):
-#             return int(t)
-#         return None
-
-
 
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
@@ -494,16 +258,14 @@ class StrategyPairResult(StrategyMetric):
 
     pairs: List[str] = field(default_factory=list)
     price_col: str = "close"
-    ts_col: str = "timestamp"  # must exist in raw_data["spot"]
+    ts_col: str = "timestamp" 
     pair_col: str = "pair"
 
-    # Trade extraction field names (output of _extract_trades)
     trade_id_col: str = "id"
     entry_ts_col: str = "entry_ts"
     exit_ts_col: str = "exit_ts"
     size_col: str = "size"
 
-    # Plot settings
     height: int = 760
     template: str = "plotly_white"
     hovermode: str = "x unified"
@@ -532,8 +294,6 @@ class StrategyPairResult(StrategyMetric):
                 logger.exception(f"StrategyPairResult.plot failed for pair={pair}: {e}")
 
         return figs
-
-    # -------------------------- core plot --------------------------
 
     def _plot_pair(
         self,
@@ -569,14 +329,12 @@ class StrategyPairResult(StrategyMetric):
             subplot_titles=(f"{pair} Price + Trades", "Net Position Size"),
         )
 
-        # Price
         fig.add_trace(
             go.Scatter(x=ts_dt, y=price, mode="lines", name="Price"),
             row=1,
             col=1,
         )
 
-        # If no state => only price
         if state is None:
             return self._finalize_fig(fig)
 
@@ -584,7 +342,6 @@ class StrategyPairResult(StrategyMetric):
         if not trades:
             return self._finalize_fig(fig)
 
-        # Markers + segments
         entry_x: list[dt.datetime] = []
         entry_y: list[float] = []
         entry_cd: list[list[Any]] = []
@@ -593,7 +350,6 @@ class StrategyPairResult(StrategyMetric):
         exit_y: list[float] = []
         exit_cd: list[list[Any]] = []
 
-        # Net size events (delta per timestamp)
         deltas: Dict[int, float] = {}
 
         for tr in trades:
@@ -622,7 +378,6 @@ class StrategyPairResult(StrategyMetric):
 
                 deltas[xt] = deltas.get(xt, 0.0) - size
 
-            # Segment only when both timestamps exist
             if et is not None and xt is not None:
                 p0 = self._nearest_price(epoch_s=et, ts_s=ts_s, price=price)
                 p1 = self._nearest_price(epoch_s=xt, ts_s=ts_s, price=price)
@@ -654,7 +409,7 @@ class StrategyPairResult(StrategyMetric):
                     y=entry_y,
                     mode="markers",
                     name="Entry",
-                    marker=dict(size=9, symbol="triangle-up"),
+                    marker=dict(size=10, symbol="triangle-up", color="green"),
                     customdata=entry_cd,
                     hovertemplate=(
                         "Entry<br>"
@@ -675,7 +430,7 @@ class StrategyPairResult(StrategyMetric):
                     y=exit_y,
                     mode="markers",
                     name="Exit",
-                    marker=dict(size=9, symbol="triangle-down"),
+                    marker=dict(size=10, symbol="triangle-down", color="red"),
                     customdata=exit_cd,
                     hovertemplate=(
                         "Exit<br>"
@@ -689,7 +444,6 @@ class StrategyPairResult(StrategyMetric):
                 col=1,
             )
 
-        # Net position size (cumulative step)
         if deltas:
             ev_ts = sorted(deltas.keys())
             cum = 0.0
@@ -715,7 +469,6 @@ class StrategyPairResult(StrategyMetric):
 
         return self._finalize_fig(fig)
 
-    # -------------------------- data helpers --------------------------
 
     def _get_pair_df(self, *, raw_data: RawData | None, pair: str) -> pl.DataFrame | None:
         if raw_data is None:
@@ -737,10 +490,8 @@ class StrategyPairResult(StrategyMetric):
         ts = df.get_column(self.ts_col)
         px = df.get_column(self.price_col).cast(pl.Float64)
 
-        # Normalize timestamp column to epoch seconds + datetime
         if ts.dtype in (pl.Int64, pl.Int32, pl.UInt64, pl.UInt32):
             max_v = ts.max()
-            # heuristic: ms if 13 digits
             ms = bool(max_v is not None and int(max_v) > 10_000_000_000)
             ts_s = (ts.cast(pl.Int64) // (1000 if ms else 1)).alias("ts_s")
         elif ts.dtype == pl.Datetime:
@@ -756,8 +507,6 @@ class StrategyPairResult(StrategyMetric):
         ts_dt_list = [self._epoch_to_dt(int(t)) for t in ts_s_list]
 
         return ts_dt_list, [int(t) for t in ts_s_list], [float(p) for p in price_list]
-
-    # -------------------------- trade extraction --------------------------
 
     def _extract_trades(self, *, state: StrategyState, pair: str) -> list[dict[str, Any]]:
         """
@@ -802,8 +551,6 @@ class StrategyPairResult(StrategyMetric):
 
         return out
 
-    # -------------------------- time + price utils --------------------------
-
     def _nearest_price(self, *, epoch_s: int, ts_s: list[int], price: list[float]) -> Optional[float]:
         if epoch_s is None or not ts_s:
             return None
@@ -835,8 +582,6 @@ class StrategyPairResult(StrategyMetric):
             return int(x)
         except Exception:
             return None
-
-    # -------------------------- layout --------------------------
 
     def _finalize_fig(self, fig: go.Figure) -> go.Figure:
         fig.update_layout(

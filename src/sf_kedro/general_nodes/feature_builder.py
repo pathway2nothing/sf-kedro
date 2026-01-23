@@ -76,7 +76,6 @@ def extract_validation_features(
             
             return group_df.with_columns(log_ret)
     
-    # Create extractors from configs
     extractors = []
     for config in feature_configs:
         extractor = LogReturnExtractor(
@@ -91,13 +90,12 @@ def extract_validation_features(
     raw_data_view = sf.RawDataView(raw_data)
     features_df = feature_set.extract(raw_data_view)
     
-    # Log feature statistics
     feature_cols = [col for col in features_df.columns 
                     if col not in ['timestamp', 'pair']]
     
     mlflow.log_params({
         "features.num_features": len(feature_cols),
-        "features.names": ",".join(feature_cols[:10]),  # First 10
+        "features.names": ",".join(feature_cols[:10]), 
     })
     
     mlflow.log_metrics({

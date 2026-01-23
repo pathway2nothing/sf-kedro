@@ -1,7 +1,7 @@
 # sf_kedro/custom_modules/classification_metrics.py
 
 from typing import Dict, Any, Tuple, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import polars as pl
 import numpy as np
@@ -32,9 +32,8 @@ class SignalClassificationMetric(sf.analytic.SignalMetric):
     Requires labels to be provided.
     """
     
-    # Label mapping configuration
-    positive_labels: list = None  # e.g., ['rise', 'up', 1]
-    negative_labels: list = None  # e.g., ['fall', 'down', 0]
+    positive_labels: list = field(default_factory=list)  # e.g., ['rise', 'up', 1]
+    negative_labels: list = field(default_factory=list)  # e.g., ['fall', 'down', 0]
     
     chart_height: int = 900
     chart_width: int = 1400
@@ -83,14 +82,12 @@ class SignalClassificationMetric(sf.analytic.SignalMetric):
         
         signals_df = signals.value
         
-        # Join signals with labels
         signals_with_labels = signals_df.join(
             labels,
             on=["timestamp", "pair"],
             how="inner"
         )
         
-        # Filter only non-zero signals (actual predictions)
         predictions = signals_with_labels.filter(
             pl.col("signal") != 0
         )
@@ -101,40 +98,29 @@ class SignalClassificationMetric(sf.analytic.SignalMetric):
         
         logger.info(f"Found {predictions.height} signal-label pairs for classification")
         
-        # Extract predictions and true labels
         y_pred = predictions["signal"].to_numpy()
         y_true_raw = predictions["label"].to_numpy()
-        
-        # Log unique label values for debugging
         unique_labels = np.unique(y_true_raw)
         logger.info(f"Unique label values: {unique_labels}")
         logger.info(f"Unique prediction values: {np.unique(y_pred)}")
         
-        # Convert labels to binary
         y_true = self._map_labels_to_binary(y_true_raw)
         
-        # Convert predictions to binary (1 for positive signal, 0 for negative)
         y_pred_binary = (y_pred > 0).astype(int)
         
         logger.info(f"After conversion - Unique y_true: {np.unique(y_true)}, y_pred: {np.unique(y_pred_binary)}")
         
-        # Get signal strengths if available, otherwise use absolute signal value
         if "strength" in predictions.columns:
             strengths = predictions["strength"].to_numpy()
         else:
             strengths = np.abs(y_pred).astype(float)
         
-        # ФІКС: Якщо всі strengths однакові, використовуємо y_pred_binary як "probability"
-        # для ROC (буде дегенерована, але коректна)
         if np.std(strengths) < 1e-10:
             logger.warning("All strengths are identical, ROC curve will be degenerate")
-            # Використовуємо prediction + невеликий шум для ROC
             roc_scores = y_pred_binary.astype(float)
         else:
-            # Нормалізуємо strengths до [0, 1] для ROC
             roc_scores = (strengths - strengths.min()) / (strengths.max() - strengths.min())
         
-        # Compute confusion matrix
         try:
             cm = confusion_matrix(y_true, y_pred_binary)
             if cm.shape == (2, 2):
@@ -146,20 +132,18 @@ class SignalClassificationMetric(sf.analytic.SignalMetric):
             logger.warning(f"Could not compute confusion matrix: {e}, using defaults")
             tn, fp, fn, tp = 1, 1, 1, 1
         
-        # Basic metrics
         precision = precision_score(y_true, y_pred_binary, zero_division=0)
         recall = recall_score(y_true, y_pred_binary, zero_division=0)
         f1 = f1_score(y_true, y_pred_binary, zero_division=0)
         
-        # Specificity and sensitivity
+
         specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
         sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
         balanced_acc = (sensitivity + specificity) / 2
         
-        # Positive rate
+
         positive_rate = np.mean(y_true)
         
-        # ROC Curve - використовуємо sklearn для коректності
         from sklearn.metrics import roc_curve, roc_auc_score
         
         if len(np.unique(y_true)) > 1:
@@ -175,7 +159,6 @@ class SignalClassificationMetric(sf.analytic.SignalMetric):
             auc = 0.5
             logger.warning("Only one class present, AUC undefined")
         
-        # Log loss
         logloss = np.nan
         try:
             if len(np.unique(y_true)) > 1 and np.std(roc_scores) > 1e-10:
@@ -184,7 +167,6 @@ class SignalClassificationMetric(sf.analytic.SignalMetric):
         except Exception as e:
             logger.warning(f"Could not compute log loss: {e}")
         
-        # Strength statistics
         strength_mean = float(np.mean(strengths))
         strength_std = float(np.std(strengths)) if len(strengths) > 1 else 0.0
         strength_quartiles = np.percentile(strengths, [25, 50, 75]).tolist() if len(strengths) > 0 else [0, 0, 0]
@@ -219,7 +201,7 @@ class SignalClassificationMetric(sf.analytic.SignalMetric):
                     "thresholds": thresholds_arr.tolist(),
                 },
                 "strength_quartiles": strength_quartiles,
-                "strengths_raw": strengths.tolist(),  # ДОДАНО для histogram
+                "strengths_raw": strengths.tolist(), 
             },
         }
         
@@ -292,7 +274,6 @@ class SignalClassificationMetric(sf.analytic.SignalMetric):
         total = sum(cm.values())
         cm_pcts = [[val / total * 100 if total > 0 else 0 for val in row] for row in cm_values]
         
-        # Світліша палітра для кращої читабельності тексту
         fig.add_trace(
             go.Heatmap(
                 z=cm_values,
@@ -302,7 +283,7 @@ class SignalClassificationMetric(sf.analytic.SignalMetric):
                     [0, "#f0f9e8"],
                     [0.5, "#bae4bc"],
                     [1, "#7bccc4"]
-                ],  # Зелена світла палітра
+                ],
                 showscale=False,
                 hovertemplate=(
                     "<b>%{y} / %{x}</b><br>"

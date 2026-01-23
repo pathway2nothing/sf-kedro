@@ -9,7 +9,7 @@ from sf_kedro.general_nodes import (
     compute_signal_metrics,
     save_signal_plots,
     run_backtest,
-    log_backtest_metrics, 
+    log_last_state_metrics, 
     save_strategy_plots,
     compute_strategy_metrics
 )
@@ -83,7 +83,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                 tags=["backtesting"],
             ),
             node(
-                func=log_backtest_metrics,
+                func=log_last_state_metrics,
                 inputs="backtest_results",
                 outputs="backtest_metrics",
                 name="log_backtest_metrics",

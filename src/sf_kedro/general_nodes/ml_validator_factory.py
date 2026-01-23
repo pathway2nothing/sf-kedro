@@ -25,12 +25,7 @@ def create_sklearn_validator(
     """
     from signalflow.validator import SklearnSignalValidator
     
-    validator = SklearnSignalValidator(
-        model_type=model_config['model_type'],
-        model_params=model_config.get('model_params', {})
-    )
-    
-    # Prepare data
+
     train_df = train_data['full']
     feature_cols = [col for col in train_df.columns 
                     if col not in ['timestamp', 'pair', 'label']]

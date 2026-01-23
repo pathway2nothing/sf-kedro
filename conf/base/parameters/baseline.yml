@@ -2,8 +2,8 @@ baseline:
   data:
     store:
       type: duckdb/spot
-      params:
-        db_path: "data/01_raw/market.duckdb"
+      
+      db_path: "data/01_raw/market.duckdb"
     
     loader:
       type: binance/spot      
@@ -25,11 +25,11 @@ baseline:
         day: 31
 
   detector:
-    name: "sma_cross"
-    params:
-      fast_period: 60
-      slow_period: 720
-      price_col: "close"
+    type: "sma_cross"
+
+    fast_period: 60
+    slow_period: 720
+    price_col: "close"
 
   signal_metrics:
     pair:
@@ -53,10 +53,10 @@ baseline:
       chart_height: 900
       chart_width: 1400
   labeling:
-    name: "fixed_horizon"
-    params:
-      horizon: 120
-      price_col: "close"
+    type: "fixed_horizon"
+
+    horizon: 120
+    price_col: "close"
   
   signal_plots_output_dir: "data/08_reporting/baseline/signals"
 

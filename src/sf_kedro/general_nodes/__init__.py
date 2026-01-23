@@ -20,15 +20,13 @@ from .labeling import (
     split_train_val_test,
 )
 
-from .validator_factory import (
+from .ml_validator_factory import (
     create_sklearn_validator,
-    create_nn_validator,
     load_validator_from_registry,
 )
 
-from .backtest_engine import (
+from .backtest import (
     run_backtest,
-    log_backtest_metrics,
 )
 
 from .signal_metrics import (
@@ -39,7 +37,7 @@ from .signal_metrics import (
 from .strategy_metrics import (
     compute_strategy_metrics, 
     save_strategy_plots,
-
+    log_last_state_metrics
 )
 
 __all__ = [
@@ -66,7 +64,7 @@ __all__ = [
     
     # Backtest
     "run_backtest",
-    "log_backtest_metrics",
+    "log_last_state_metrics",
     
     # Signal metrics
     "compute_signal_metrics",

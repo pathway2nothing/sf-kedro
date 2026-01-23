@@ -2,6 +2,7 @@ from typing import Dict, Any, List, Tuple, Optional
 from dataclasses import dataclass, field
 
 import polars as pl
+import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -18,10 +19,9 @@ class SignalProfileMetric(sf.analytic.SignalMetric):
     including cumulative max/min statistics for understanding typical signal outcomes.
     """
     
-    look_ahead: int = 1440  # Minutes to analyze after signal
+    look_ahead: int = 1440
     quantiles: Tuple[float, float] = (0.25, 0.75)
     
-    # Plot styling
     chart_height: int = 900
     chart_width: int = 1400
     
@@ -33,7 +33,6 @@ class SignalProfileMetric(sf.analytic.SignalMetric):
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """Calculate performance metrics for signals across all pairs."""
         
-        # Get price data
         if "spot" in raw_data:
             price_df = raw_data["spot"]
         elif "futures" in raw_data:
@@ -43,14 +42,12 @@ class SignalProfileMetric(sf.analytic.SignalMetric):
         
         signals_df = signals.value
         
-        # Filter for LONG signals only
         buy_signals = signals_df.filter(pl.col("signal") == 1)
         
         if buy_signals.height == 0:
             logger.warning("No buy signals found for profile analysis")
             return None, {}
         
-        # Collect post-signal price changes
         post_signal_changes = []
         daily_max_uplifts = []
         
@@ -61,7 +58,6 @@ class SignalProfileMetric(sf.analytic.SignalMetric):
             pair_price = price_df.filter(pl.col("pair") == pair).sort("timestamp")
             pair_signals = buy_signals.filter(pl.col("pair") == pair)
             
-            # Convert to pandas for easier indexing (can optimize later)
             price_pd = pair_price.to_pandas().set_index("timestamp")
             
             for signal_row in pair_signals.iter_rows(named=True):
@@ -72,18 +68,15 @@ class SignalProfileMetric(sf.analytic.SignalMetric):
                 except KeyError:
                     continue
                 
-                # Get future prices
                 if signal_idx + self.look_ahead < len(price_pd):
                     signal_price = price_pd.iloc[signal_idx]["close"]
                     future_prices = price_pd["close"].iloc[
                         signal_idx : signal_idx + self.look_ahead + 1
                     ].values
                     
-                    # Calculate relative changes
                     relative_changes = (future_prices / signal_price) - 1.0
                     post_signal_changes.append(relative_changes)
                     
-                    # Track max uplift
                     max_uplift = relative_changes.max()
                     daily_max_uplifts.append(max_uplift)
         
@@ -91,11 +84,8 @@ class SignalProfileMetric(sf.analytic.SignalMetric):
             logger.warning("No valid signal sequences found with sufficient future data")
             return None, {}
         
-        # Create DataFrame with all post-signal sequences
-        import pandas as pd
         post_signal_df = pd.DataFrame(post_signal_changes)
         
-        # Compute statistical profiles
         mean_profile = post_signal_df.mean()
         std_profile = post_signal_df.std()
         median_profile = post_signal_df.median()
@@ -117,7 +107,6 @@ class SignalProfileMetric(sf.analytic.SignalMetric):
         
         signal_counts = post_signal_df.count()
         
-        # Compute summary statistics
         avg_max_uplift = np.mean(daily_max_uplifts) * 100
         median_max_uplift = np.median(daily_max_uplifts) * 100
         max_mean_val = mean_profile.max()
@@ -184,7 +173,6 @@ class SignalProfileMetric(sf.analytic.SignalMetric):
         
         fig = self._create_figure()
         
-        # Add all traces
         self._add_mean_profile(fig, computed_metrics)
         self._add_std_bands(fig, computed_metrics)
         self._add_median_profile(fig, computed_metrics)
@@ -192,12 +180,10 @@ class SignalProfileMetric(sf.analytic.SignalMetric):
         self._add_key_timepoints(fig, computed_metrics)
         self._add_max_mean_marker(fig, computed_metrics)
         
-        # Cumulative plots
         self._add_cummax_profiles(fig, computed_metrics)
         self._add_cummin_profiles(fig, computed_metrics)
         self._add_cummax_percentiles(fig, computed_metrics)
         
-        # Annotations and layout
         self._add_summary_annotation(fig, computed_metrics)
         self._add_profit_target_line(fig)
         self._update_layout(fig, computed_metrics, plots_context)
@@ -422,7 +408,6 @@ class SignalProfileMetric(sf.analytic.SignalMetric):
         cummin_lower = metrics["series"]["cummin_lower"]
         cummin_upper = metrics["series"]["cummin_upper"]
         
-        # CumMax bands
         fig.add_trace(
             go.Scatter(
                 x=cummax_upper.index,
@@ -527,7 +512,6 @@ class SignalProfileMetric(sf.analytic.SignalMetric):
             std = metrics["series"]["std_profile"]
             signal_counts = metrics["series"]["signal_counts"]
             
-            # Calculate y-axis range for top plot
             y_min = (mean - std).min()
             y_max = (mean + std).max()
             margin = (y_max - y_min) * 0.15
@@ -567,18 +551,13 @@ class SignalProfileMetric(sf.analytic.SignalMetric):
                 ),
             )
             
-            # Add custom hover data with signal counts
             customdata = np.array(signal_counts.fillna(0)).reshape(-1, 1)
             
-            # Update hover templates for traces in subplot 1 (first ~10 traces)
-            # Traces added to row=1: Mean, +1STD, -1STD, Median, 75th, 25th, MaxMean
             row1_trace_names = [
                 "Mean", "+1 STD", "-1 STD", "Median", 
                 "75th %ile", "25th %ile", "Max Mean"
             ]
             
-            # Update hover templates for traces in subplot 2 (remaining traces)
-            # Traces added to row=2: CumMax Mean, CumMax Median, CumMin Mean, etc.
             row2_trace_names = [
                 "CumMax Mean", "CumMax Median", "CumMin Mean", "CumMin Median",
                 "CumMax 75th", "CumMax 25th", "CumMin 75th", "CumMin 25th"

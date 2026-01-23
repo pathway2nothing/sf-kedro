@@ -23,16 +23,15 @@ def detect_signals(
     Returns:
         Detected signals
     """
-    detector_name = detector_config.get('name')
+    detector_name = detector_config.pop('type')
     
-    detector_type = sf.default_registry.get(component_type=sf.SfComponentType.DETECTOR, name=detector_name)
-    detector: sf.detector.SignalDetector = detector_type(**detector_config.get('params', {}))
+    detector = sf.default_registry.get(component_type=sf.SfComponentType.DETECTOR, name=detector_name)(**detector_config)
     raw_data_view = sf.RawDataView(raw_data)
     signals = detector.run(raw_data_view=raw_data_view, context=None)
     
     mlflow.log_params({
         "detector.type": detector_name,
-        "detector.params": detector_config.get('params', {}),
+        "detector.params": detector_config,
     })
     
     return signals
@@ -56,10 +55,8 @@ def validate_signals(
     """
     validated_signals = validator.validate_signals(raw_signals, features)
     
-    # Calculate filtering statistics
     val_df = validated_signals.value
     
-    # Count high-confidence signals (assuming prob > 0.6)
     if 'probability_rise' in val_df.columns:
         high_conf = val_df.filter(
             (pl.col("probability_rise") > 0.6) | 

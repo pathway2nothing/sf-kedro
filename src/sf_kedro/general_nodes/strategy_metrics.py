@@ -12,7 +12,51 @@ from signalflow import StrategyState, RawData
 from sf_kedro.custom_modules.strategy_metrics import *
 from sf_kedro.utils.telegram import send_plots_to_telegram
 
-FigureLike = Union[go.Figure, List[go.Figure]]
+
+
+def log_last_state_metrics(backtest_results: Dict) -> Dict:
+    """
+    Calculate and log backtest metrics.
+    
+    Args:
+        backtest_results: Results from run_backtest
+        
+    Returns:
+        Dictionary of metrics
+    """
+    metrics = {
+        "final_return": backtest_results.get('final_return', 0),
+        "max_drawdown": backtest_results.get('max_drawdown', 0),
+        "sharpe_ratio": backtest_results.get('sharpe_ratio', 0),
+        "win_rate": backtest_results.get('win_rate', 0),
+        "total_trades": backtest_results.get('total_trades', 0),
+        "final_equity": backtest_results.get('final_equity', 0),
+    }
+    
+    mlflow.log_metrics({
+        "backtest.return": metrics["final_return"],
+        "backtest.max_drawdown": metrics["max_drawdown"],
+        "backtest.sharpe": metrics["sharpe_ratio"],
+        "backtest.win_rate": metrics["win_rate"],
+        "backtest.total_trades": metrics["total_trades"],
+        "backtest.final_equity": metrics["final_equity"],
+    })
+    
+    metrics_df = backtest_results.get('metrics_df')
+    if metrics_df is not None:
+        output_path = Path("data/07_model_output/backtest/equity_curve.csv")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        metrics_df.write_csv(output_path)
+        mlflow.log_artifact(str(output_path), artifact_path="backtest")
+    
+    trades_df = backtest_results.get('trades_df')
+    if trades_df is not None:
+        output_path = Path("data/07_model_output/backtest/trades.parquet")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        trades_df.write_parquet(output_path)
+        mlflow.log_artifact(str(output_path), artifact_path="backtest")
+    
+    return metrics
 
 
 def compute_strategy_metrics(
@@ -22,7 +66,7 @@ def compute_strategy_metrics(
     strategy_name: Optional[str] = None,
     raw_data: Optional[RawData] = None,
     state: Optional[StrategyState] = None,
-) -> Tuple[Dict[str, Any], Dict[str, FigureLike]]:
+) -> Tuple[Dict[str, Any], Dict[str, go.Figure | List[go.Figure]]]:
 
     logger.info(f"Computing strategy metrics for {len(params)} metric types")
 
@@ -38,7 +82,7 @@ def compute_strategy_metrics(
     summary = _build_strategy_summary(backtest_results)
 
     results: Dict[str, Any] = {"quant": summary, "per_metric": {}}
-    plots: Dict[str, FigureLike] = {}
+    plots: Dict[str, go.Figure | List[go.Figure]] = {}
 
     for metric in metrics:
         metric_name = metric.__class__.__name__
@@ -97,7 +141,7 @@ def compute_strategy_metrics(
 
 
 def save_strategy_plots(
-    plots: Dict[str, FigureLike],
+    plots: Dict[str, go.Figure | List[go.Figure]],
     output_dir: str,
 ) -> None:
     """
@@ -167,7 +211,7 @@ def _build_strategy_summary(backtest_results: Dict[str, Any]) -> Dict[str, Any]:
 
 def _log_metrics_to_mlflow(
     results: Dict[str, Any],
-    plots: Dict[str, FigureLike | None],
+    plots: Dict[str, go.Figure | List[go.Figure] | None],
     artifact_root: str,
 ) -> None:
     """
@@ -175,10 +219,8 @@ def _log_metrics_to_mlflow(
     - logs numeric entries recursively
     - logs plots as html artifacts
     """
-    # 1) metrics (recursive)
     _log_dict_metrics(prefix="strategy", obj=results)
 
-    # 2) artifacts (html)
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir_path = Path(tmpdir)
 
@@ -215,7 +257,6 @@ def _log_dict_metrics(prefix: str, obj: Any) -> None:
         mlflow.log_metric(prefix, float(obj))
         return
 
-    # lists/tuples: log numeric entries by index if needed
     if isinstance(obj, (list, tuple)):
         for i, v in enumerate(obj):
             _log_dict_metrics(f"{prefix}[{i}]", v)

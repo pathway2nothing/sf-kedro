@@ -15,7 +15,7 @@ import signalflow as sf
 class SignalDistributionMetric(sf.analytic.SignalMetric):
     """Analyze signal distribution across pairs and time."""
     
-    n_bars: int = 10  # Змінено з 1 на 10 для кращого групування
+    n_bars: int = 10
     rolling_window_minutes: int = 60
     ma_window_hours: int = 12
     chart_height: int = 1200
@@ -31,7 +31,6 @@ class SignalDistributionMetric(sf.analytic.SignalMetric):
         
         signals_df = signals.value
         
-        # Count signals per pair (excluding neutral signals)
         signals_per_pair = (
             signals_df
             .filter(pl.col("signal") != 0)
@@ -44,7 +43,6 @@ class SignalDistributionMetric(sf.analytic.SignalMetric):
             logger.warning("No non-zero signals found")
             return None, {}
         
-        # Get statistics
         signal_counts = signals_per_pair["signal_count"].to_numpy()
         min_count = int(signal_counts.min())
         max_count = int(signal_counts.max())
@@ -52,10 +50,7 @@ class SignalDistributionMetric(sf.analytic.SignalMetric):
         median_count = np.median(signal_counts)
         n_pairs = len(signal_counts)
         
-        # ФІКС: Адаптивна кількість бінів
-        # Якщо пар мало — показуємо кожну окремо, якщо багато — групуємо
         if n_pairs <= 15:
-            # Мало пар — не використовуємо histogram, просто bar chart
             grouped_data = []
             for row in signals_per_pair.iter_rows(named=True):
                 grouped_data.append({
@@ -66,7 +61,6 @@ class SignalDistributionMetric(sf.analytic.SignalMetric):
             bin_labels = [g["category"] for g in grouped_data]
             use_histogram = False
         else:
-            # Багато пар — групуємо в біни
             actual_n_bars = min(self.n_bars, max(3, n_pairs // 5))
             
             if min_count == max_count:
@@ -102,7 +96,6 @@ class SignalDistributionMetric(sf.analytic.SignalMetric):
                     })
             use_histogram = True
         
-        # Compute rolling signal count over time
         signals_by_time = (
             signals_df
             .filter(pl.col("signal") != 0)
@@ -234,7 +227,6 @@ class SignalDistributionMetric(sf.analytic.SignalMetric):
         categories = [g["category"] for g in grouped]
         
         if use_histogram:
-            # Histogram mode: показуємо кількість пар в кожному біні
             counts = [g["num_columns"] for g in grouped]
             hovertexts = [g["columns_in_group"] for g in grouped]
             y_title = "Number of Pairs"
@@ -246,8 +238,7 @@ class SignalDistributionMetric(sf.analytic.SignalMetric):
             )
             customdata = [[ht] for ht in hovertexts]
         else:
-            # Bar chart mode: показуємо кількість сигналів для кожної пари
-            counts = [g["num_columns"] for g in grouped]  # тут це signal_count
+            counts = [g["num_columns"] for g in grouped]
             y_title = "Signal Count"
             hovertemplate = (
                 "<b>Pair:</b> %{x}<br>"
@@ -256,7 +247,6 @@ class SignalDistributionMetric(sf.analytic.SignalMetric):
             )
             customdata = None
         
-        # Колірна шкала від світлого до темного
         max_val = max(counts) if counts else 1
         colors = [f"rgba(33, 113, 181, {0.4 + 0.6 * (c / max_val)})" for c in counts]
         
@@ -276,10 +266,9 @@ class SignalDistributionMetric(sf.analytic.SignalMetric):
             col=1,
         )
         
-        # ФІКС: Цілі числа на Y-axis
         fig.update_yaxes(
             title_text=y_title,
-            dtick=1 if max(counts) <= 10 else None,  # Цілі числа якщо мало значень
+            dtick=1 if max(counts) <= 10 else None,
             row=1,
             col=1,
         )
@@ -293,7 +282,6 @@ class SignalDistributionMetric(sf.analytic.SignalMetric):
         counts = signals_per_pair["signal_count"].to_list()
         n_pairs = len(pairs)
         
-        # ФІКС: Цілі ранги
         ranks = list(range(1, n_pairs + 1))
         
         fig.add_trace(
@@ -316,7 +304,6 @@ class SignalDistributionMetric(sf.analytic.SignalMetric):
             col=1,
         )
         
-        # Mean line
         mean_count = metrics["quant"]["mean_signals_per_pair"]
         fig.add_hline(
             y=mean_count,
@@ -328,7 +315,6 @@ class SignalDistributionMetric(sf.analytic.SignalMetric):
             col=1,
         )
         
-        # ФІКС: X-axis з цілими числами
         fig.update_xaxes(
             title_text="Pair Rank",
             dtick=1 if n_pairs <= 20 else None,

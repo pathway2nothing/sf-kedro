@@ -74,7 +74,6 @@ def compute_signal_metrics(
             plots[metric_name] = None
             results[metric_name] = None
 
-    # MLflow logging
     if mlflow.active_run():
         logger.info("Logging signal metrics to MLflow")
         _log_metrics_to_mlflow(results, plots)

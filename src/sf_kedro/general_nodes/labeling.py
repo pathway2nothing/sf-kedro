@@ -23,25 +23,16 @@ def create_labels(
     Returns:
         DataFrame with labels
     """
-    # Create labeler directly
-    labeler_name = labeler_config.get('name')
+    labeler_name = labeler_config.pop('type')
     
-    if labeler_name == 'fixed_horizon':
-        from signalflow.target import FixedHorizonLabeler
-        
-        labeler = FixedHorizonLabeler(
-            price_col=labeler_config.get('price_col', 'close'),
-            horizon=labeler_config.get('horizon', 10),
-            include_meta=labeler_config.get('include_meta', True)
-        )
-    else:
-        raise ValueError(f"Unknown labeler: {labeler_name}")
-    
-    # Create labels
+    labeler = sf.default_registry.get(
+        component_type=sf.SfComponentType.LABELER,
+        name=labeler_name
+    )(**labeler_config)
+
     raw_df = raw_data.get("spot")
     labeled_df = labeler.compute(df=raw_df, signals=signals)
     
-    # Log label distribution
     label_dist = (
         labeled_df
         .group_by("label")
@@ -78,14 +69,12 @@ def split_train_val_test(
     train_ratio = split_config.get('train_ratio', 0.7)
     val_ratio = split_config.get('val_ratio', 0.15)
     
-    # Join features with labels
     full_data = features.join(
         labeled_data.select(["timestamp", "pair", "label"]),
         on=["timestamp", "pair"],
         how="inner"
     )
     
-    # Remove NaN values
     full_data = full_data.drop_nulls()
     
     n = full_data.height
