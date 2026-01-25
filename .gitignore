@@ -166,3 +166,4 @@ mlruns/*
 
 merge.py
 project.txt
+*.db

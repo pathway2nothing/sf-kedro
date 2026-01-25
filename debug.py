@@ -95,7 +95,6 @@ def run_pipeline(pipeline_name: str = "baseline", node_names: str = None, env: s
         print("PIPELINE FAILED WITH ERROR:")
         print(f"{'='*60}\n")
         
-        # Print full traceback
         import traceback
         traceback.print_exc()
         
