@@ -1,40 +1,40 @@
-store_path:
+base_store_path:
   type: text.TextDataset
   filepath: data/01_raw/store_path.txt
 
-raw_data:
+base_raw_data:
   type: pickle.PickleDataset
   filepath: data/02_intermediate/baseline/raw_data.pkl
 
-signals:
+base_signals:
   type: pickle.PickleDataset
   filepath: data/03_primary/baseline/signals.pkl
 
-features:
+base_features:
   type: pickle.PickleDataset
   filepath: data/04_feature/baseline/features.pkl
 
-labels:
+base_labels:
   type: pickle.PickleDataset
   filepath: data/05_model_input/baseline/labels.pkl
 
-signal_metrics_results:
+base_signal_metrics_results:
   type: pickle.PickleDataset
   filepath: data/05_model_input/baseline/signal_metrics_results.pkl
 
-signal_metrics_plots:
+base_signal_metrics_plots:
   type: pickle.PickleDataset
   filepath: data/08_reporting/baseline/signal_metrics_plots.pkl
 
-strategy_metrics_results:
+base_strategy_metrics_results:
   type: pickle.PickleDataset
   filepath: data/08_reporting/baseline/strategy_metrics_results.pkl
 
-strategy_metrics_plots:
+base_strategy_metrics_plots:
   type: pickle.PickleDataset
   filepath: data/08_reporting/baseline/strategy_metrics_plots.pkl
 
-backtest_state:
+base_backtest_state:
   type: pickle.PickleDataset
   filepath: data/07_model_output/baseline/backtest_state.pkl
 

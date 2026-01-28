@@ -1,38 +1,171 @@
-# conf/base/parameters/ml_validated.yml
-
 ml_validated:
-
+  data:
+    store:
+      type: duckdb/spot
+      db_path: "data/01_raw/market.duckdb"
+    loader:
+      type: binance/spot
+    pairs:
+      - BTCUSDT
+      - ETHUSDT
+      - SOLUSDT
+      - BNBUSDT
+      - XRPUSDT
+    period:
+      start:
+        year: 2025
+        month: 10
+        day: 1
+      end:
+        year: 2025
+        month: 12
+        day: 31
+  
   detector:
-    name: "sma_cross"
-    params:
-      fast_period: 60
-      slow_period: 720
-      price_col: "close"
-
-  ml_validator:
+    type: "sma_cross"
+    fast_period: 60
+    slow_period: 720
+    price_col: "close"
+  
+  features:
+    extractors:
+      - type: "rsi"
+    config:
+      method: "align_on_signals"
+      include_time_features: true
+      normalize: false
+  
+  labeling:
+    type: "fixed_horizon"
+    horizon: 60
+    price_col: "close"
+    up_threshold: 0.01
+    down_threshold: -0.01
+    labels:
+      positive: 1
+      negative: 0
+      neutral: -1
+    include_neutral: false
+  
+  split:
+    method: "time_based"
+    train_ratio: 0.6
+    val_ratio: 0.2
+    test_ratio: 0.2
+    shuffle: false
+    stratify: false
+  
+  validator:
     model_type: "random_forest"
-    model_params:
-      n_estimators: 100
-      max_depth: 5
-      random_state: 42
-
+    n_estimators: 100
+    max_depth: 10
+    min_samples_split: 20
+    min_samples_leaf: 10
+    max_features: "sqrt"
+    class_weight: "balanced"
+    random_state: 42
+    n_jobs: -1
+    preprocessing:
+      scaler: "standard"
+      handle_missing: "median"
+      remove_outliers: true
+      outlier_threshold: 3.0
+    training:
+      early_stopping: true
+      early_stopping_rounds: 10
+      eval_metric: "logloss"
+      verbose: 1
+    prediction:
+      threshold: 0.5
+      use_probability: true
+      probability_threshold: 0.6
+    mlflow:
+      experiment_name: "ml_validated_signals"
+      run_name: "random_forest_v1"
+      log_model: true
+      log_params: true
+      log_metrics: true
+      log_feature_importance: true
+  
+  signal_metrics:
+    pair:
+      pairs:
+        - BTCUSDT
+        - ETHUSDT
+        - SOLUSDT
+      metrics:
+        - type: "signal_profile"
+          params:
+            bin_width_minutes: 60
+        - type: "signal_distribution"
+          params:
+            window_hours: 24
+        - type: "signal_classification"
+          params:
+            confidence_bins: [0.5, 0.6, 0.7, 0.8, 0.9]
+    aggregate:
+      metrics:
+        - type: "signal_profile"
+          params:
+            bin_width_minutes: 60
+        - type: "confidence_analysis"
+          params:
+            bins: 10
+  
+  signal_plots_output_dir: "data/08_reporting/ml_validated/signals"
+  
   strategy:
-    db_path: "data/07_model_output/strategy_ml.duckdb"
+    type: "ml_validated"
+    position_size: 1.0
+    max_positions: 3
+    entry:
+      min_confidence: 0.6
+      require_signal: true
+    exit:
+      take_profit: 0.03
+      stop_loss: 0.015
+      time_based: true
+      max_hold_minutes: 240
+    risk:
+      max_drawdown: 0.20
+      max_daily_loss: 0.05
+    fees:
+      maker: 0.001
+      taker: 0.001
+      slippage: 0.0005
     initial_capital: 10000.0
-    fee_rate: 0.001
-    slippage_pct: 0.001
-    strategy_id: "ml_validated_strategy"
-    data_key: "spot"
-    
-    entry_rules:
-      - type: "signal_entry"
-        base_position_size: 1000.0
-        use_probability_sizing: true
-        min_probability: 0.6
-        max_positions_per_pair: 1
-        allow_shorts: false
-    
-    exit_rules:
-      - type: "tp_sl"
-        take_profit_pct: 0.02
-        stop_loss_pct: 0.02
+  
+  strategy_metrics:
+    performance:
+      metrics:
+        - type: "equity_curve"
+        - type: "returns_distribution"
+        - type: "drawdown_analysis"
+        - type: "trade_analysis"
+    risk:
+      metrics:
+        - type: "risk_metrics"
+          params:
+            risk_free_rate: 0.02
+        - type: "var_analysis"
+          params:
+            confidence_levels: [0.95, 0.99]
+    comparison:
+      baseline_pipeline: "baseline"
+      metrics:
+        - "total_return"
+        - "sharpe_ratio"
+        - "max_drawdown"
+        - "win_rate"
+  
+  strategy_plots_output_dir: "data/08_reporting/ml_validated/strategy"
+
+# telegram:
+#   enabled: true
+#   bot_token: null
+#   chat_id: null
+#   image_width: 1400
+#   image_height: 900
+#   raise_on_error: false
+
+# strategy_name: "ML_Validated_Strategy"

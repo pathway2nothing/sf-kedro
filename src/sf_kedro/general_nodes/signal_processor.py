@@ -9,6 +9,7 @@ import tempfile
 from pathlib import Path
 import plotly.io as pio
 
+
 def detect_signals(
     raw_data: sf.RawData,
     detector_config: Dict,

@@ -111,5 +111,5 @@ def run_pipeline(pipeline_name: str = "baseline", node_names: str = None, env: s
 if __name__ == "__main__":
    
     run_pipeline(
-        pipeline_name='baseline'
+        pipeline_name='ml_validated'
     )
