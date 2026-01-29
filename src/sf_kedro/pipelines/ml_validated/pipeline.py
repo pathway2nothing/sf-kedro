@@ -86,7 +86,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                 'ml_raw_signals',
                 'params:ml_validated.features',
             ],
-            outputs='ml_feature_set',
+            outputs='ml_features',
             name='create_feature_set',
             tags=['features', 'preparation'],
         ),
@@ -106,8 +106,8 @@ def create_pipeline(**kwargs) -> Pipeline:
         node(
             func=split_train_val_test,
             inputs=[
-                'ml_feature_set',
                 'ml_labels',
+                'ml_features',
                 'params:ml_validated.split',
             ],
             outputs=['ml_train_data', 'ml_val_data', 'ml_test_data'],
@@ -131,7 +131,7 @@ def create_pipeline(**kwargs) -> Pipeline:
             func=validate_signals,
             inputs=[
                 'ml_raw_signals',
-                'ml_feature_set',
+                'ml_features',
                 'ml_trained_validator',
             ],
             outputs='ml_validated_signals',
@@ -141,11 +141,14 @@ def create_pipeline(**kwargs) -> Pipeline:
         
         node(
             func=compute_signal_metrics,
-            inputs=[
-                'ml_validated_signals',
-                'ml_raw_data',
-                'params:ml_validated.signal_metrics',
-            ],
+            inputs={
+                 "params": "params:ml_validated.signal_metrics",
+                 "raw_data": "ml_raw_data",
+                 "signals": "ml_validated_signals",
+                 "labels": "ml_labels",
+                 "telegram_config": "params:telegram",
+                 "strategy_name": "params:strategy_name",
+            },
             outputs='ml_signal_metrics_results',
             name='compute_signal_metrics',
             tags=['metrics', 'signal_metrics'],
@@ -175,25 +178,35 @@ def create_pipeline(**kwargs) -> Pipeline:
         ),
         
         node(
+                func=log_last_state_metrics,
+                inputs="ml_backtest_state",
+                outputs="ml_backtest_metrics",
+                name="log_backtest_metrics",
+                tags=["metrics", "backtest_metrics"],
+            ),
+        node(
             func=compute_strategy_metrics,
-            inputs=[
-                'ml_backtest_state',
-                'params:ml_validated.strategy_metrics',
-            ],
-            outputs='ml_strategy_metrics_results',
+            inputs={
+                "backtest_results": "ml_backtest_results",
+                "params": "params:ml_validated.strategy_metrics",
+                "telegram_config": "params:telegram",
+                "strategy_name": "params:strategy_name",
+                "raw_data": "ml_raw_data",
+                "state": "ml_backtest_state",
+            },
+            outputs=["ml_strategy_metrics_results", "ml_strategy_metrics_plots"],
             name='compute_strategy_metrics',
             tags=['metrics', 'strategy_metrics'],
         ),
-        
         node(
             func=save_strategy_plots,
-            inputs=[
-                'ml_strategy_metrics_results',
-                'params:ml_validated.strategy_metrics',
-            ],
-            outputs='ml_strategy_metrics_plots',
+            inputs={
+                "plots": "ml_strategy_metrics_plots",
+                "output_dir": "params:ml_validated.strategy_plots_output_dir"
+            },
+            outputs=None,
             name='save_strategy_plots',
-            tags=['metrics', 'strategy_metrics', 'plots'],
+            tags=['reporting'],
         ),
         
         node(
@@ -225,7 +238,7 @@ def create_pipeline(**kwargs) -> Pipeline:
             "params:ml_validated.strategy",             
             "params:ml_validated.strategy_metrics",    
             #"params:ml_validated.strategy_plots_output_dir",  
-           # "params:telegram",            
-            #"params:strategy_name",       
+            "params:telegram",            
+            "params:strategy_name",       
         }
     )

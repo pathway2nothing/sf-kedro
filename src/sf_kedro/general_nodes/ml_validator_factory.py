@@ -33,10 +33,19 @@ def create_sklearn_validator(
     X_train = train_df.select(feature_cols)
     y_train = train_df.select("label")
     
-    # Train
+    model_type = model_config.pop('model_type')
+    model_params = model_config.get('model_params', {})
+    validator = SklearnSignalValidator(
+        model_type=model_type,
+        model_params=model_params,
+        ts_col=model_config.get('ts_col', 'timestamp'),
+        pair_col=model_config.get('pair_col', 'pair'),
+        train_params=model_config.get('train_params', {}),
+        tune_enabled=model_config.get('tune_enabled', False),
+        tune_params=model_config.get('tune_params', {}),
+    )
     validator.fit(X_train, y_train)
     
-    # Evaluate on validation set
     val_df = val_data['full']
     X_val = val_df.select(feature_cols)
     y_val = val_df.select("label")
@@ -46,10 +55,9 @@ def create_sklearn_validator(
     y_pred = validator.model.predict(X_val.to_pandas())
     val_accuracy = accuracy_score(y_val.to_pandas(), y_pred)
     
-    # Log to MLflow
     mlflow.log_params({
-        "model.type": model_config['model_type'],
-        **{f"model.{k}": v for k, v in model_config.get('model_params', {}).items()}
+        "model.type": model_type,
+        **{f"model.{k}": v for k, v in model_params.items()}
     })
     
     mlflow.log_metrics({
@@ -60,7 +68,7 @@ def create_sklearn_validator(
     mlflow.sklearn.log_model(
         validator.model,
         artifact_path="sklearn_validator",
-        registered_model_name=f"signalflow_sklearn_{model_config['model_type']}"
+        registered_model_name=f"signalflow_sklearn_{model_type}"
     )
     
     return validator

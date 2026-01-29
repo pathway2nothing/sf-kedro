@@ -77,7 +77,11 @@ def create_pipeline(**kwargs) -> Pipeline:
             ),
             node(
                 func=run_backtest,
-                inputs=["base_raw_data", "base_signals", "params:baseline.strategy"],
+                inputs=[
+                    "base_raw_data", 
+                    "base_signals", 
+                    "params:baseline.strategy"
+                ],
                 outputs=["base_backtest_results", "base_backtest_state"],
                 name="run_backtest",
                 tags=["backtesting"],

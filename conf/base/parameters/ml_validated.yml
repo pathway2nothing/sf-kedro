@@ -37,15 +37,8 @@ ml_validated:
   
   labeling:
     type: "fixed_horizon"
-    horizon: 60
+    horizon: 120
     price_col: "close"
-    up_threshold: 0.01
-    down_threshold: -0.01
-    labels:
-      positive: 1
-      negative: 0
-      neutral: -1
-    include_neutral: false
   
   split:
     method: "time_based"
@@ -57,35 +50,17 @@ ml_validated:
   
   validator:
     model_type: "random_forest"
-    n_estimators: 100
-    max_depth: 10
-    min_samples_split: 20
-    min_samples_leaf: 10
-    max_features: "sqrt"
-    class_weight: "balanced"
-    random_state: 42
-    n_jobs: -1
-    preprocessing:
-      scaler: "standard"
-      handle_missing: "median"
-      remove_outliers: true
-      outlier_threshold: 3.0
-    training:
-      early_stopping: true
-      early_stopping_rounds: 10
-      eval_metric: "logloss"
-      verbose: 1
-    prediction:
-      threshold: 0.5
-      use_probability: true
-      probability_threshold: 0.6
-    mlflow:
-      experiment_name: "ml_validated_signals"
-      run_name: "random_forest_v1"
-      log_model: true
-      log_params: true
-      log_metrics: true
-      log_feature_importance: true
+    
+    model_params:
+      n_estimators: 1000
+      max_depth: 6
+      random_state: 42
+      n_jobs: -1
+    train_params:
+      early_stopping_rounds: 50
+    tune_enabled: false
+    pair_col: pair
+    ts_col: timestamp
   
   signal_metrics:
     pair:
@@ -159,13 +134,3 @@ ml_validated:
         - "win_rate"
   
   strategy_plots_output_dir: "data/08_reporting/ml_validated/strategy"
-
-# telegram:
-#   enabled: true
-#   bot_token: null
-#   chat_id: null
-#   image_width: 1400
-#   image_height: 900
-#   raise_on_error: false
-
-# strategy_name: "ML_Validated_Strategy"

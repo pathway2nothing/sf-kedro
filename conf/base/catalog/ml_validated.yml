@@ -11,9 +11,9 @@ ml_raw_signals:
   type: pickle.PickleDataset
   filepath: data/03_primary/ml/raw_signals.pkl
 
-ml_extracted_features:
+ml_features:
   type: pickle.PickleDataset
-  filepath: data/04_feature/ml/extracted_features.pkl
+  filepath: data/04_feature/ml/features.pkl
 
 ml_feature_set:
   type: pickle.PickleDataset

@@ -65,7 +65,7 @@ def extract_validation_features(
     
     mlflow.log_metrics({
         "features.total_rows": features_df.height,
-        "features.null_ratio": features_df.null_count().sum() / (features_df.height * len(feature_cols)) if len(feature_cols) > 0 else 0,
+        "features.null_ratio": features_df.null_count().sum_horizontal().item() / (features_df.height * len(feature_cols)) if len(feature_cols) > 0 else 0,
     })
     
     return features_df
