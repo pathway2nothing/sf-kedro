@@ -52,6 +52,7 @@ baseline:
       roc_n_thresholds: 100
       chart_height: 900
       chart_width: 1400
+      
   labeling:
     type: "fixed_horizon"
 

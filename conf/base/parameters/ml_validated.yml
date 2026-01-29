@@ -68,69 +68,63 @@ ml_validated:
         - BTCUSDT
         - ETHUSDT
         - SOLUSDT
-      metrics:
-        - type: "signal_profile"
-          params:
-            bin_width_minutes: 60
-        - type: "signal_distribution"
-          params:
-            window_hours: 24
-        - type: "signal_classification"
-          params:
-            confidence_bins: [0.5, 0.6, 0.7, 0.8, 0.9]
-    aggregate:
-      metrics:
-        - type: "signal_profile"
-          params:
-            bin_width_minutes: 60
-        - type: "confidence_analysis"
-          params:
-            bins: 10
+        - BNBUSDT
+        - XRPUSDT
+    profile:
+      look_ahead: 1440
+      quantiles: [0.25, 0.75]
+      
+    distribution:
+      n_bars: 10
+
+    classification:
+      positive_labels: ['rise', 'up', 1, 'positive', 'buy']
+      negative_labels: ['fall', 'down', 0, 'negative', 'sell']
+      roc_n_thresholds: 100
+      chart_height: 900
+      chart_width: 1400
   
   signal_plots_output_dir: "data/08_reporting/ml_validated/signals"
   
   strategy:
-    type: "ml_validated"
-    position_size: 1.0
-    max_positions: 3
-    entry:
-      min_confidence: 0.6
-      require_signal: true
-    exit:
-      take_profit: 0.03
-      stop_loss: 0.015
-      time_based: true
-      max_hold_minutes: 240
-    risk:
-      max_drawdown: 0.20
-      max_daily_loss: 0.05
-    fees:
-      maker: 0.001
-      taker: 0.001
-      slippage: 0.0005
+    db_path: "data/07_model_output/strategy_ml_validated.duckdb"
     initial_capital: 10000.0
-  
+    fee_rate: 0.001
+    slippage_pct: 0.001
+    strategy_id: "ml_validated_strategy"
+    data_key: "spot"
+    
+    entry_rules:
+      - type: "fixed_size_entry"
+
+    
+    exit_rules:
+      - type: "tp_sl"
+        take_profit_pct: 0.02
+        stop_loss_pct: 0.02
+
+    metrics:
+      - type: "total_return"
+        initial_capital: 1000
+
+      - type: "balance_allocation"
+        initial_capital: 1000
+
+      - type: "drawdown"
+      
+      - type: "win_rate"
+
+      - type: "sharpe_ratio"  
+
   strategy_metrics:
-    performance:
-      metrics:
-        - type: "equity_curve"
-        - type: "returns_distribution"
-        - type: "drawdown_analysis"
-        - type: "trade_analysis"
-    risk:
-      metrics:
-        - type: "risk_metrics"
-          params:
-            risk_free_rate: 0.02
-        - type: "var_analysis"
-          params:
-            confidence_levels: [0.95, 0.99]
-    comparison:
-      baseline_pipeline: "baseline"
-      metrics:
-        - "total_return"
-        - "sharpe_ratio"
-        - "max_drawdown"
-        - "win_rate"
-  
-  strategy_plots_output_dir: "data/08_reporting/ml_validated/strategy"
+    result_main: {}
+
+    result_pair:
+      pairs: 
+        - BTCUSDT
+        - ETHUSDT
+        - SOLUSDT
+      price_col: "close"
+      ts_col: "timestamp"
+
+  strategy_plots_output_dir: "data/08_reporting/ml/strategy"

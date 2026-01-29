@@ -80,17 +80,14 @@ def compute_signal_metrics(
     else:
         logger.debug("No active MLflow run, skipping MLflow logging")
     
-    # Telegram notification
     if telegram_config and telegram_config.get("enabled", False):
         logger.info("Preparing Telegram notification")
         try:
-            # Build header message
             header_template = telegram_config.get(
                 "header_message",
                 "📊 <b>SignalFlow Metrics Report</b>"
             )
             
-            # Get date range from signals
             signals_df = signals.value
             date_min = signals_df["timestamp"].min()
             date_max = signals_df["timestamp"].max()
@@ -104,8 +101,7 @@ def compute_signal_metrics(
                 n_pairs=n_pairs,
                 timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             )
-            
-            # Add summary stats
+                        # Add summary stats
             summary_lines = [header, ""]
             for metric_name, metric_data in results.items():
                 if metric_data and isinstance(metric_data, dict) and "quant" in metric_data:

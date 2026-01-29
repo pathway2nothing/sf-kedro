@@ -1,4 +1,3 @@
-
 ml_store_path:
   type: text.TextDataset
   filepath: data/01_raw/store_path.txt
@@ -14,10 +13,6 @@ ml_raw_signals:
 ml_features:
   type: pickle.PickleDataset
   filepath: data/04_feature/ml/features.pkl
-
-ml_feature_set:
-  type: pickle.PickleDataset
-  filepath: data/04_feature/ml/feature_set.pkl
 
 ml_labels:
   type: pickle.PickleDataset
@@ -47,18 +42,26 @@ ml_validated_signals:
   type: pickle.PickleDataset
   filepath: data/07_model_output/ml/validated_signals.pkl
 
+ml_backtest_results:
+  type: pickle.PickleDataset
+  filepath: data/07_model_output/ml/backtest_results.pkl
+
 ml_backtest_state:
   type: pickle.PickleDataset
   filepath: data/07_model_output/ml/backtest_state.pkl
 
-ml_signal_metrics_plots:
+ml_signal_plots:
   type: pickle.PickleDataset
-  filepath: data/08_reporting/ml/signal_metrics_plots.pkl
+  filepath: data/08_reporting/ml/signal_plots.pkl
+
+ml_backtest_metrics:
+  type: pickle.PickleDataset
+  filepath: data/08_reporting/ml/backtest_metrics.pkl
 
 ml_strategy_metrics_results:
   type: pickle.PickleDataset
   filepath: data/08_reporting/ml/strategy_metrics_results.pkl
 
-ml_strategy_metrics_plots:
+ml_strategy_plots:
   type: pickle.PickleDataset
-  filepath: data/08_reporting/ml/strategy_metrics_plots.pkl
+  filepath: data/08_reporting/ml/strategy_plots.pkl

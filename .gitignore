@@ -167,3 +167,4 @@ mlruns/*
 merge.py
 project.txt
 *.db
+chat_bot.py
