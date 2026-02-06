@@ -22,6 +22,7 @@ from .labeling import (
 
 from .ml_validator_factory import (
     create_sklearn_validator,
+    create_nn_validator,
     load_validator_from_registry,
 )
 

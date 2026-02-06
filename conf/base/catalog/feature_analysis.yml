@@ -1,0 +1,15 @@
+fa_store_path:
+  type: text.TextDataset
+  filepath: data/01_raw/store_path.txt
+
+fa_raw_data:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/feature_analysis/raw_data.pkl
+
+fa_features:
+  type: pickle.PickleDataset
+  filepath: data/04_feature/feature_analysis/features.pkl
+
+fa_plots:
+  type: pickle.PickleDataset
+  filepath: data/08_reporting/feature_analysis/plots.pkl

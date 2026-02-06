@@ -1,0 +1,67 @@
+nn_store_path:
+  type: text.TextDataset
+  filepath: data/01_raw/store_path.txt
+
+nn_raw_data:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/nn/raw_data.pkl
+
+nn_raw_signals:
+  type: pickle.PickleDataset
+  filepath: data/03_primary/nn/raw_signals.pkl
+
+nn_features:
+  type: pickle.PickleDataset
+  filepath: data/04_feature/nn/features.pkl
+
+nn_labels:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/nn/labels.pkl
+
+nn_train_data:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/nn/train_data.pkl
+
+nn_val_data:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/nn/val_data.pkl
+
+nn_test_data:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/nn/test_data.pkl
+
+nn_signal_metrics_results:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/nn/signal_metrics_results.pkl
+
+nn_trained_validator:
+  type: pickle.PickleDataset
+  filepath: data/06_models/nn/trained_validator.pkl
+
+nn_validated_signals:
+  type: pickle.PickleDataset
+  filepath: data/07_model_output/nn/validated_signals.pkl
+
+nn_backtest_results:
+  type: pickle.PickleDataset
+  filepath: data/07_model_output/nn/backtest_results.pkl
+
+nn_backtest_state:
+  type: pickle.PickleDataset
+  filepath: data/07_model_output/nn/backtest_state.pkl
+
+nn_signal_plots:
+  type: pickle.PickleDataset
+  filepath: data/08_reporting/nn/signal_plots.pkl
+
+nn_backtest_metrics:
+  type: pickle.PickleDataset
+  filepath: data/08_reporting/nn/backtest_metrics.pkl
+
+nn_strategy_metrics_results:
+  type: pickle.PickleDataset
+  filepath: data/08_reporting/nn/strategy_metrics_results.pkl
+
+nn_strategy_plots:
+  type: pickle.PickleDataset
+  filepath: data/08_reporting/nn/strategy_plots.pkl

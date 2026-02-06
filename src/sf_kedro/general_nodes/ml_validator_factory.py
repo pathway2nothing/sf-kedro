@@ -92,10 +92,10 @@ def create_nn_validator(
     Returns:
         Trained neural validator
     """
-    import pytorch_lightning as pl
-    from pytorch_lightning.loggers import MLFlowLogger
-    from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
-    from signalflow_nn.validator import TemporalValidator
+    import lightning as L
+    from lightning.pytorch.loggers import MLFlowLogger
+    from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
+    from signalflow.nn.validator import TemporalValidator
     
     # Create validator
     validator = TemporalValidator(**model_config)
@@ -124,7 +124,7 @@ def create_nn_validator(
     )
     
     # Trainer
-    trainer = pl.Trainer(
+    trainer = L.Trainer(
         max_epochs=trainer_config.get('max_epochs', 50),
         logger=mlf_logger,
         callbacks=[checkpoint_callback, early_stop_callback],

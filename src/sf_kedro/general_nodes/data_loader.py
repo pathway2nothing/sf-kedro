@@ -42,7 +42,7 @@ def download_market_data(
         component_type=sf.SfComponentType.RAW_DATA_LOADER,
         name=loader_config.pop('type', 'binance/spot'))
         
-    loader: sf.data.raw_loader.RawDataLoader = loader_type(store=store, **loader_config)
+    loader: sf.data.source.RawDataLoader = loader_type(store=store, **loader_config)
 
     start = datetime(**period['start'])
     end = datetime(**period['end'])

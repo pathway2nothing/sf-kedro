@@ -22,14 +22,14 @@ ml_validated:
         day: 31
   
   detector:
-    type: "sma_cross"
+    type: "example/sma_cross"
     fast_period: 60
     slow_period: 720
     price_col: "close"
   
   features:
     extractors:
-      - type: "rsi"
+      - type: "example/rsi"
     config:
       method: "align_on_signals"
       include_time_features: true

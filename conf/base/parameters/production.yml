@@ -1,9 +1,61 @@
-  # conf/base/parameters/production.yml
-  # Production-specific parameters
 production:
+  data:
+    store:
+      type: duckdb/spot
+      db_path: "data/01_raw/market.duckdb"
+    pairs:
+      - BTCUSDT
+      - ETHUSDT
+      - SOLUSDT
+      - BNBUSDT
+      - XRPUSDT
+    period:
+      start:
+        year: 2025
+        month: 11
+        day: 1
+      end:
+        year: 2025
+        month: 12
+        day: 31
+    store_path: "data/01_raw/market.duckdb"
+
+  detector:
+    type: "example/sma_cross"
+    fast_period: 60
+    slow_period: 720
+    price_col: "close"
+
+  features:
+    extractors:
+      - type: "example/rsi"
+    config:
+      method: "align_on_signals"
+      include_time_features: true
+      normalize: false
+
   model:
-    name: "signalflow_nn_gru"  # Registered model name in MLflow
-    stage: "Production"  # Production, Staging, or version number
+    name: "signalflow_nn_gru"
+    stage: "Production"
+
+  # No labels in production — pass null
+  empty_labels: null
+
+  signal_metrics:
+    pair:
+      pairs:
+        - BTCUSDT
+        - ETHUSDT
+        - SOLUSDT
+        - BNBUSDT
+        - XRPUSDT
+    profile:
+      look_ahead: 1440
+      quantiles: [0.25, 0.75]
+    distribution:
+      n_bars: 10
+
+  signal_plots_output_dir: "data/08_reporting/production/signals"
 
   strategy:
     db_path: "data/07_model_output/strategy_prod.duckdb"
@@ -12,16 +64,37 @@ production:
     slippage_pct: 0.001
     strategy_id: "production_strategy"
     data_key: "spot"
-    
+
     entry_rules:
-      - type: "signal_entry"
+      - type: "signal"
         base_position_size: 1000.0
         use_probability_sizing: true
-        min_probability: 0.65  # Higher threshold for production
+        min_probability: 0.65
         max_positions_per_pair: 1
         allow_shorts: false
-    
+
     exit_rules:
       - type: "tp_sl"
         take_profit_pct: 0.025
         stop_loss_pct: 0.015
+
+    metrics:
+      - type: "total_return"
+        initial_capital: 1000
+      - type: "balance_allocation"
+        initial_capital: 1000
+      - type: "drawdown"
+      - type: "win_rate"
+      - type: "sharpe_ratio"
+
+  strategy_metrics:
+    result_main: {}
+    result_pair:
+      pairs:
+        - BTCUSDT
+        - ETHUSDT
+        - SOLUSDT
+      price_col: "close"
+      ts_col: "timestamp"
+
+  strategy_plots_output_dir: "data/08_reporting/production/strategy"

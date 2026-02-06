@@ -1,0 +1,47 @@
+prod_raw_data:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/production/raw_data.pkl
+
+prod_raw_signals:
+  type: pickle.PickleDataset
+  filepath: data/03_primary/production/raw_signals.pkl
+
+prod_features:
+  type: pickle.PickleDataset
+  filepath: data/04_feature/production/features.pkl
+
+prod_validator:
+  type: pickle.PickleDataset
+  filepath: data/06_models/production/validator.pkl
+
+prod_validated_signals:
+  type: pickle.PickleDataset
+  filepath: data/07_model_output/production/validated_signals.pkl
+
+prod_signal_metrics_results:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/production/signal_metrics_results.pkl
+
+prod_signal_plots:
+  type: pickle.PickleDataset
+  filepath: data/08_reporting/production/signal_plots.pkl
+
+prod_backtest_results:
+  type: pickle.PickleDataset
+  filepath: data/07_model_output/production/backtest_results.pkl
+
+prod_backtest_state:
+  type: pickle.PickleDataset
+  filepath: data/07_model_output/production/backtest_state.pkl
+
+prod_backtest_metrics:
+  type: pickle.PickleDataset
+  filepath: data/08_reporting/production/backtest_metrics.pkl
+
+prod_strategy_metrics_results:
+  type: pickle.PickleDataset
+  filepath: data/08_reporting/production/strategy_metrics_results.pkl
+
+prod_strategy_plots:
+  type: pickle.PickleDataset
+  filepath: data/08_reporting/production/strategy_plots.pkl

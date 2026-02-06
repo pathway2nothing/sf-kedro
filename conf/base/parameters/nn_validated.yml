@@ -1,13 +1,52 @@
-# conf/base/parameters/nn_validated.yml
-
 nn_validated:
+  data:
+    store:
+      type: duckdb/spot
+      db_path: "data/01_raw/market.duckdb"
+    loader:
+      type: binance/spot
+    pairs:
+      - BTCUSDT
+      - ETHUSDT
+      - SOLUSDT
+      - BNBUSDT
+      - XRPUSDT
+    period:
+      start:
+        year: 2025
+        month: 10
+        day: 1
+      end:
+        year: 2025
+        month: 12
+        day: 31
 
   detector:
-    name: "sma_cross"
-    params:
-      fast_period: 60
-      slow_period: 720
-      price_col: "close"
+    type: "example/sma_cross"
+    fast_period: 60
+    slow_period: 720
+    price_col: "close"
+
+  features:
+    extractors:
+      - type: "example/rsi"
+    config:
+      method: "align_on_signals"
+      include_time_features: true
+      normalize: false
+
+  labeling:
+    type: "fixed_horizon"
+    horizon: 120
+    price_col: "close"
+
+  split:
+    method: "time_based"
+    train_ratio: 0.6
+    val_ratio: 0.2
+    test_ratio: 0.2
+    shuffle: false
+    stratify: false
 
   nn_validator:
     model:
@@ -17,13 +56,35 @@ nn_validated:
       dropout: 0.2
       pooling_strategy: "attention"
       num_classes: 3
-      
+
     trainer:
       max_epochs: 50
       batch_size: 32
       accelerator: "auto"
       devices: 1
       early_stopping_patience: 5
+
+  signal_metrics:
+    pair:
+      pairs:
+        - BTCUSDT
+        - ETHUSDT
+        - SOLUSDT
+        - BNBUSDT
+        - XRPUSDT
+    profile:
+      look_ahead: 1440
+      quantiles: [0.25, 0.75]
+    distribution:
+      n_bars: 10
+    classification:
+      positive_labels: ['rise', 'up', 1, 'positive', 'buy']
+      negative_labels: ['fall', 'down', 0, 'negative', 'sell']
+      roc_n_thresholds: 100
+      chart_height: 900
+      chart_width: 1400
+
+  signal_plots_output_dir: "data/08_reporting/nn_validated/signals"
 
   strategy:
     db_path: "data/07_model_output/strategy_nn.duckdb"
@@ -32,16 +93,37 @@ nn_validated:
     slippage_pct: 0.001
     strategy_id: "nn_validated_strategy"
     data_key: "spot"
-    
+
     entry_rules:
-      - type: "signal_entry"
+      - type: "signal"
         base_position_size: 1000.0
         use_probability_sizing: true
         min_probability: 0.6
         max_positions_per_pair: 1
         allow_shorts: false
-    
+
     exit_rules:
       - type: "tp_sl"
         take_profit_pct: 0.02
         stop_loss_pct: 0.02
+
+    metrics:
+      - type: "total_return"
+        initial_capital: 1000
+      - type: "balance_allocation"
+        initial_capital: 1000
+      - type: "drawdown"
+      - type: "win_rate"
+      - type: "sharpe_ratio"
+
+  strategy_metrics:
+    result_main: {}
+    result_pair:
+      pairs:
+        - BTCUSDT
+        - ETHUSDT
+        - SOLUSDT
+      price_col: "close"
+      ts_col: "timestamp"
+
+  strategy_plots_output_dir: "data/08_reporting/nn_validated/strategy"

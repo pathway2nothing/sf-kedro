@@ -25,7 +25,7 @@ baseline:
         day: 31
 
   detector:
-    type: "sma_cross"
+    type: "example/sma_cross"
 
     fast_period: 60
     slow_period: 720

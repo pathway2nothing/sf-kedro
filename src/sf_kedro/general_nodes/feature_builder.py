@@ -7,31 +7,31 @@ import mlflow
 import signalflow as sf
 
 
-def create_feature_set(feature_configs: List[Dict]) -> sf.feature.FeatureSet:
+def create_feature_set(feature_configs: List[Dict]) -> sf.feature.FeaturePipeline:
     """
-    Create FeatureSet from configurations.
-    
+    Create FeaturePipeline from configurations.
+
     Args:
         feature_configs: List of feature extractor configs
-        
+
     Returns:
-        FeatureSet instance
+        FeaturePipeline instance
     """
     extractors = []
-    
+
     for config in feature_configs.get('extractors', []):
         extractor_name = config.pop('type')
         if extractor_name and 'custom' in extractor_name:
             continue
-        
+
         extractor_type = sf.default_registry.get(
-            component_type=sf.SfComponentType.FEATURE_EXTRACTOR,
+            component_type=sf.SfComponentType.FEATURE,
             name=extractor_name)
-        
+
         extractor = extractor_type(**config)
         extractors.append(extractor)
 
-    return sf.feature.FeatureSet(extractors=extractors)
+    return sf.feature.FeaturePipeline(features=extractors)
 
 
 def extract_validation_features(
