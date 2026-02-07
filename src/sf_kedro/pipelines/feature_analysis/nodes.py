@@ -66,7 +66,7 @@ def build_feature_analysis_plots(
     Args:
         raw_data: Raw OHLCV data
         features_df: Extracted features
-        analysis_params: Dict with feature_name, price_pair, price_col, n_bins
+        analysis_params: Dict with feature_name, price_pair, price_col, n_bins, indicator_type
         telegram_config: Optional Telegram config
 
     Returns:
@@ -76,12 +76,16 @@ def build_feature_analysis_plots(
     price_pair = analysis_params.get("price_pair", "BTCUSDT")
     price_col = analysis_params.get("price_col", "close")
     n_bins = analysis_params.get("n_bins", 50)
+    indicator_type = analysis_params.get("indicator_type", None)
 
     pairs = sorted(features_df["pair"].unique().to_list())
     logger.info(
         f"Building feature analysis plots: feature={feature_name}, "
         f"price_pair={price_pair}, pairs={pairs}"
     )
+
+    # Calculate statistics for Telegram only
+    stats = _calculate_feature_statistics(features_df, feature_name, pairs)
 
     fig1 = _plot_feature_across_pairs(features_df, feature_name, pairs)
     fig2 = _plot_feature_vs_price(raw_data, features_df, feature_name, price_pair, price_col)
@@ -90,8 +94,23 @@ def build_feature_analysis_plots(
 
     plots = {"feature_analysis": [fig1, fig2, fig3, fig4]}
 
+    # Generate text report if Telegram is enabled
+    text_report = None
     if telegram_config and telegram_config.get("enabled", False):
-        _send_to_telegram(plots, telegram_config, feature_name, pairs)
+        # Check if text report is enabled (default: True)
+        if telegram_config.get("send_text_report", True):
+            logger.info("Generating detailed text report...")
+            text_report = _generate_text_report(
+                features_df=features_df,
+                raw_data=raw_data,
+                feature_name=feature_name,
+                pairs=pairs,
+                price_col=price_col,
+                stats=stats,
+                indicator_type=indicator_type,
+            )
+
+        _send_to_telegram(plots, telegram_config, feature_name, pairs, indicator_type, stats, text_report)
 
     return plots
 
@@ -131,6 +150,386 @@ def save_feature_analysis_plots(
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
+
+def _calculate_feature_statistics(
+    features_df: pl.DataFrame,
+    feature_name: str,
+    pairs: List[str],
+) -> Dict[str, Any]:
+    """Calculate statistical metrics for the feature across all pairs."""
+    # Check if feature exists in dataframe
+    if feature_name not in features_df.columns:
+        logger.warning(f"Feature '{feature_name}' not found in features_df. Available columns: {features_df.columns}")
+        return {}
+
+    all_values = (
+        features_df
+        .drop_nulls(subset=[feature_name])
+        [feature_name]
+        .to_numpy()
+        .astype(float)
+    )
+
+    # Filter out NaN and inf values
+    all_values = all_values[np.isfinite(all_values)]
+
+    if len(all_values) == 0:
+        logger.warning(f"No valid (non-NaN, non-inf) values found for feature '{feature_name}'")
+        return {}
+
+    stats = {
+        "count": len(all_values),
+        "mean": float(np.mean(all_values)),
+        "std": float(np.std(all_values)),
+        "min": float(np.min(all_values)),
+        "max": float(np.max(all_values)),
+        "q25": float(np.percentile(all_values, 25)),
+        "q50": float(np.percentile(all_values, 50)),
+        "q75": float(np.percentile(all_values, 75)),
+    }
+
+    # Calculate skewness and kurtosis
+    from scipy import stats as scipy_stats
+
+    # Check if we have enough data points
+    if len(all_values) < 3:
+        logger.warning(f"Not enough data points ({len(all_values)}) to calculate skewness/kurtosis")
+        stats["skewness"] = 0.0
+        stats["kurtosis"] = 0.0
+    else:
+        stats["skewness"] = float(scipy_stats.skew(all_values))
+        stats["kurtosis"] = float(scipy_stats.kurtosis(all_values))
+
+    # Determine if transformation is needed
+    stats["needs_transform"] = abs(stats["skewness"]) > 1.0 or abs(stats["kurtosis"]) > 3.0
+    stats["transform_reason"] = []
+
+    if abs(stats["skewness"]) > 1.0:
+        direction = "right" if stats["skewness"] > 0 else "left"
+        stats["transform_reason"].append(f"High skewness ({stats['skewness']:.2f}, {direction}-skewed)")
+
+    if abs(stats["kurtosis"]) > 3.0:
+        tail_type = "heavy" if stats["kurtosis"] > 0 else "light"
+        stats["transform_reason"].append(f"Extreme kurtosis ({stats['kurtosis']:.2f}, {tail_type} tails)")
+
+    return stats
+
+
+def _calculate_pair_correlations(
+    features_df: pl.DataFrame,
+    raw_data: sf.RawData,
+    feature_name: str,
+    pairs: List[str],
+    price_col: str,
+) -> Dict[str, Optional[float]]:
+    """
+    Calculate Pearson correlation between feature and price for each pair.
+
+    Args:
+        features_df: Feature data with columns [timestamp, pair, feature_name]
+        raw_data: Raw OHLCV data
+        feature_name: Name of feature being analyzed
+        pairs: List of trading pairs
+        price_col: Price column to use (e.g., 'close')
+
+    Returns:
+        Dict mapping pair to correlation coefficient or None if insufficient data
+    """
+    correlations = {}
+
+    # Get price data once
+    price_df = raw_data.get("spot")
+
+    for pair in pairs:
+        try:
+            # Get feature data for this pair
+            feat_pair = (
+                features_df
+                .filter(pl.col("pair") == pair)
+                .select(["timestamp", feature_name])
+                .drop_nulls()
+                .sort("timestamp")
+            )
+
+            # Get price data for this pair
+            price_pair = (
+                price_df
+                .filter(pl.col("pair") == pair)
+                .select(["timestamp", price_col])
+                .sort("timestamp")
+            )
+
+            # Inner join on timestamp to align data
+            merged = feat_pair.join(price_pair, on="timestamp", how="inner")
+
+            if merged.height < 2:
+                correlations[pair] = None
+                continue
+
+            # Calculate Pearson correlation using NumPy
+            feature_vals = merged[feature_name].to_numpy().astype(float)
+            price_vals = merged[price_col].to_numpy().astype(float)
+
+            # Filter out NaN/inf
+            valid_mask = np.isfinite(feature_vals) & np.isfinite(price_vals)
+            if valid_mask.sum() < 2:
+                correlations[pair] = None
+                continue
+
+            corr_matrix = np.corrcoef(feature_vals[valid_mask], price_vals[valid_mask])
+            correlations[pair] = float(corr_matrix[0, 1])
+
+        except Exception as e:
+            logger.warning(f"Failed to calculate correlation for {pair}: {e}")
+            correlations[pair] = None
+
+    return correlations
+
+
+def _calculate_data_quality(
+    features_df: pl.DataFrame,
+    feature_name: str,
+    pairs: List[str],
+) -> Dict[str, Dict[str, Any]]:
+    """
+    Calculate data quality metrics for each pair.
+
+    Args:
+        features_df: Feature data with columns [timestamp, pair, feature_name]
+        feature_name: Name of feature being analyzed
+        pairs: List of trading pairs
+
+    Returns:
+        Dict mapping pair to quality metrics dict with keys:
+        - total_rows: Total number of rows
+        - nan_count: Number of NaN values
+        - valid_count: Number of valid values
+        - valid_pct: Percentage of valid values
+        - time_start: First timestamp
+        - time_end: Last timestamp
+        - time_span: Time span duration
+    """
+    quality_metrics = {}
+
+    for pair in pairs:
+        try:
+            pair_df = features_df.filter(pl.col("pair") == pair)
+
+            # Total rows for this pair
+            total_rows = pair_df.height
+
+            # NaN count
+            nan_count = pair_df[feature_name].null_count()
+
+            # Valid data count
+            valid_count = total_rows - nan_count
+
+            # Valid percentage
+            valid_pct = (valid_count / total_rows * 100) if total_rows > 0 else 0.0
+
+            # Time range
+            timestamps = pair_df.sort("timestamp")["timestamp"]
+            if timestamps.height > 0:
+                time_start = timestamps[0]
+                time_end = timestamps[-1]
+                time_span = time_end - time_start
+            else:
+                time_start = None
+                time_end = None
+                time_span = None
+
+            quality_metrics[pair] = {
+                "total_rows": total_rows,
+                "nan_count": nan_count,
+                "valid_count": valid_count,
+                "valid_pct": valid_pct,
+                "time_start": time_start,
+                "time_end": time_end,
+                "time_span": time_span,
+            }
+
+        except Exception as e:
+            logger.warning(f"Failed to calculate data quality for {pair}: {e}")
+            quality_metrics[pair] = {
+                "total_rows": 0,
+                "nan_count": 0,
+                "valid_count": 0,
+                "valid_pct": 0.0,
+                "time_start": None,
+                "time_end": None,
+                "time_span": None,
+            }
+
+    return quality_metrics
+
+
+def _format_text_report(
+    feature_name: str,
+    pairs: List[str],
+    stats: Dict[str, Any],
+    correlations: Dict[str, Optional[float]],
+    quality_metrics: Dict[str, Dict[str, Any]],
+    indicator_type: Optional[str] = None,
+) -> str:
+    """
+    Format all metrics into readable HTML text for Telegram.
+
+    Args:
+        feature_name: Name of feature being analyzed
+        pairs: List of trading pairs
+        stats: Global statistics from _calculate_feature_statistics()
+        correlations: Per-pair correlations from _calculate_pair_correlations()
+        quality_metrics: Per-pair quality metrics from _calculate_data_quality()
+        indicator_type: Optional indicator type (e.g., "momentum/torque")
+
+    Returns:
+        HTML-formatted text report for Telegram
+    """
+    lines = []
+
+    # Header
+    lines.append("<b>📊 Feature Analysis Report</b>")
+    lines.append(f"<b>Feature:</b> <code>{feature_name}</code>")
+    if indicator_type:
+        lines.append(f"<b>Type:</b> <code>{indicator_type}</code>")
+    lines.append(f"<b>Generated:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    lines.append("")
+
+    # Section 1: Global Statistics
+    lines.append("<b>═══ GLOBAL STATISTICS ═══</b>")
+    lines.append(f"<b>Sample Count:</b> {stats.get('count', 0):,}")
+    lines.append(f"<b>Mean:</b> {stats.get('mean', 0.0):.6f}")
+    lines.append(f"<b>Std Dev:</b> {stats.get('std', 0.0):.6f}")
+    lines.append(f"<b>Skewness:</b> {stats.get('skewness', 0.0):.4f}")
+    lines.append(f"<b>Kurtosis:</b> {stats.get('kurtosis', 0.0):.4f}")
+    lines.append("")
+    lines.append("<b>Quartiles:</b>")
+    lines.append(f"  Min:  {stats.get('min', 0.0):.6f}")
+    lines.append(f"  Q25:  {stats.get('q25', 0.0):.6f}")
+    lines.append(f"  Q50:  {stats.get('q50', 0.0):.6f}")
+    lines.append(f"  Q75:  {stats.get('q75', 0.0):.6f}")
+    lines.append(f"  Max:  {stats.get('max', 0.0):.6f}")
+    lines.append("")
+
+    # Section 2: Correlation with Price
+    lines.append("<b>═══ PRICE CORRELATION ═══</b>")
+    lines.append("<pre>")
+    lines.append(f"{'Pair':<12} {'Correlation':>12}")
+    lines.append("-" * 26)
+
+    # Sort by correlation (absolute value)
+    sorted_pairs = sorted(
+        pairs,
+        key=lambda p: abs(correlations.get(p, 0.0)) if correlations.get(p) is not None else -1,
+        reverse=True
+    )
+
+    for pair in sorted_pairs:
+        corr = correlations.get(pair)
+        if corr is None:
+            corr_str = "N/A"
+        else:
+            corr_str = f"{corr:>+.4f}"
+        lines.append(f"{pair:<12} {corr_str:>12}")
+
+    lines.append("</pre>")
+    lines.append("")
+
+    # Section 3: Data Quality
+    lines.append("<b>═══ DATA QUALITY & COVERAGE ═══</b>")
+    lines.append("<pre>")
+    lines.append(f"{'Pair':<12} {'Valid%':>8} {'NaNs':>8} {'Total':>8}")
+    lines.append("-" * 38)
+
+    for pair in pairs:
+        qm = quality_metrics.get(pair, {})
+        valid_pct = qm.get('valid_pct', 0.0)
+        nan_count = qm.get('nan_count', 0)
+        total_rows = qm.get('total_rows', 0)
+
+        lines.append(
+            f"{pair:<12} {valid_pct:>7.2f}% {nan_count:>8,} {total_rows:>8,}"
+        )
+
+    lines.append("</pre>")
+    lines.append("")
+
+    # Section 4: Time Coverage
+    lines.append("<b>Time Coverage:</b>")
+    for pair in pairs:
+        qm = quality_metrics.get(pair, {})
+        time_start = qm.get('time_start')
+        time_end = qm.get('time_end')
+
+        if time_start and time_end:
+            start_str = time_start.strftime('%Y-%m-%d %H:%M')
+            end_str = time_end.strftime('%Y-%m-%d %H:%M')
+            lines.append(f"  <code>{pair}:</code> {start_str} → {end_str}")
+
+    lines.append("")
+
+    # Section 5: Transformation recommendation
+    if stats.get('needs_transform'):
+        lines.append("<b>⚠️ TRANSFORMATION RECOMMENDATION</b>")
+        for reason in stats.get('transform_reason', []):
+            lines.append(f"  • {reason}")
+        lines.append("")
+
+    report = "\n".join(lines)
+
+    # Check Telegram message length limit
+    if len(report) > 4000:
+        logger.warning(
+            f"Text report too long ({len(report)} chars), truncating to fit Telegram limit"
+        )
+        report = report[:3900] + "\n\n... (truncated)"
+
+    return report
+
+
+def _generate_text_report(
+    features_df: pl.DataFrame,
+    raw_data: sf.RawData,
+    feature_name: str,
+    pairs: List[str],
+    price_col: str,
+    stats: Dict[str, Any],
+    indicator_type: Optional[str] = None,
+) -> str:
+    """
+    Generate comprehensive text report for feature analysis.
+
+    Orchestrates calculation of correlations, quality metrics, and formatting.
+
+    Args:
+        features_df: Feature data with columns [timestamp, pair, feature_name]
+        raw_data: Raw OHLCV data
+        feature_name: Name of feature being analyzed
+        pairs: List of trading pairs
+        price_col: Price column to use for correlation (e.g., 'close')
+        stats: Pre-calculated statistics from _calculate_feature_statistics()
+        indicator_type: Optional indicator type (e.g., "momentum/torque")
+
+    Returns:
+        HTML-formatted text report ready for Telegram
+    """
+    # Calculate per-pair correlations
+    correlations = _calculate_pair_correlations(
+        features_df, raw_data, feature_name, pairs, price_col
+    )
+
+    # Calculate data quality metrics
+    quality_metrics = _calculate_data_quality(
+        features_df, feature_name, pairs
+    )
+
+    # Format into text report
+    report = _format_text_report(
+        feature_name, pairs, stats, correlations, quality_metrics, indicator_type
+    )
+
+    return report
+
 
 def _plot_feature_across_pairs(
     features_df: pl.DataFrame,
@@ -380,29 +779,62 @@ def _send_to_telegram(
     telegram_config: Dict[str, Any],
     feature_name: str,
     pairs: List[str],
+    indicator_type: Optional[str] = None,
+    stats: Optional[Dict[str, Any]] = None,
+    text_report: Optional[str] = None,
 ) -> None:
-    """Send all plots as one Telegram media group."""
+    """Send all plots as one Telegram media group with hashtags and statistics, followed by optional text report."""
     try:
         notifier = TelegramNotifier(
             bot_token=telegram_config.get("bot_token"),
             chat_id=telegram_config.get("chat_id"),
         )
 
-        header = (
-            f"<b>Feature Analysis: {feature_name.upper()}</b>\n"
-            f"Pairs: {', '.join(pairs)}\n"
-            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        # Generate hashtags from indicator type (e.g., "momentum/rsi" -> "#momentum #rsi")
+        hashtags = ""
+        if indicator_type:
+            tags = indicator_type.split('/')
+            hashtags = " ".join(f"#{tag}" for tag in tags)
+
+        # Build caption with statistics
+        caption_parts = [f"<b>Feature Analysis: {feature_name.upper()}</b>"]
+
+        if indicator_type:
+            caption_parts.append(f"Indicator: <code>{indicator_type}</code>")
+
+        caption_parts.append(f"Pairs: {', '.join(pairs)}")
+
+        caption = "\n".join(caption_parts) + "\n"
+
+        # Add statistics if available
+        if stats:
+            caption += (
+                f"\n<b>Statistics:</b>\n"
+                f"Mean: {stats['mean']:.3f} | Std: {stats['std']:.3f}\n"
+                f"Skew: {stats['skewness']:.3f} | Kurt: {stats['kurtosis']:.3f}\n"
+            )
+            if stats.get('needs_transform'):
+                caption += f"⚠️ Needs transform: {', '.join(stats['transform_reason'])}\n"
+
+        caption += (
+            f"\nGenerated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            f"{hashtags}"
         )
-        notifier.send_message(header)
 
         all_figures = plots["feature_analysis"]
         notifier.send_plots_group(
             figures=all_figures,
-            metric_name=f"Feature: {feature_name.upper()}",
+            metric_name=caption,
             width=telegram_config.get("image_width", 1400),
             height=telegram_config.get("image_height", 900),
         )
         logger.info("Feature analysis plots sent to Telegram")
+
+        # Send detailed text report separately
+        if text_report:
+            notifier.send_message(text_report)
+            logger.info("Feature analysis text report sent to Telegram")
+
     except Exception as e:
         logger.error(f"Failed to send feature analysis to Telegram: {e}")
         if telegram_config.get("raise_on_error", False):
