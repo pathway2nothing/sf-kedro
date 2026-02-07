@@ -3,6 +3,7 @@
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 from datetime import datetime
+import json
 
 import polars as pl
 import numpy as np
@@ -84,8 +85,33 @@ def build_feature_analysis_plots(
         f"price_pair={price_pair}, pairs={pairs}"
     )
 
-    # Calculate statistics for Telegram only
+    # Calculate statistics
     stats = _calculate_feature_statistics(features_df, feature_name, pairs)
+
+    # Check if we have valid data
+    if not stats or stats.get("count", 0) == 0:
+        logger.error(
+            f"No valid data found for feature '{feature_name}'. "
+            "Skipping plot generation and Telegram notification."
+        )
+        # Return empty plots dict to prevent downstream errors
+        return {"feature_analysis": []}
+
+    # Calculate correlations and quality metrics for comprehensive stats
+    correlations = _calculate_pair_correlations(
+        features_df, raw_data, feature_name, pairs, price_col
+    )
+    quality_metrics = _calculate_data_quality(features_df, feature_name, pairs)
+
+    # Save comprehensive statistics to file for batch reporting
+    _save_statistics_to_file(
+        feature_name=feature_name,
+        indicator_type=indicator_type,
+        stats=stats,
+        correlations=correlations,
+        quality_metrics=quality_metrics,
+        output_dir="data/08_reporting/feature_analysis"
+    )
 
     fig1 = _plot_feature_across_pairs(features_df, feature_name, pairs)
     fig2 = _plot_feature_vs_price(raw_data, features_df, feature_name, price_pair, price_col)
@@ -131,7 +157,8 @@ def save_feature_analysis_plots(
 
     total_saved = 0
     for name, figures in plots.items():
-        if figures is None:
+        if figures is None or len(figures) == 0:
+            logger.info(f"No plots to save for '{name}' (empty or None)")
             continue
 
         name_dir = output_path / name
@@ -531,6 +558,109 @@ def _generate_text_report(
     return report
 
 
+def _save_statistics_to_file(
+    feature_name: str,
+    indicator_type: Optional[str],
+    stats: Dict[str, Any],
+    correlations: Dict[str, Optional[float]],
+    quality_metrics: Dict[str, Dict[str, Any]],
+    output_dir: str,
+) -> None:
+    """
+    Save comprehensive statistics to JSON file for batch reporting.
+
+    Args:
+        feature_name: Name of feature being analyzed
+        indicator_type: Indicator type (e.g., "momentum/rsi")
+        stats: Global statistics
+        correlations: Per-pair correlations
+        quality_metrics: Per-pair quality metrics
+        output_dir: Directory to save stats file
+    """
+    try:
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        stats_file = output_path / "latest_stats.json"
+
+        # Prepare data for JSON serialization
+        def serialize_value(v):
+            """Convert numpy/polars types to Python types."""
+            if v is None:
+                return None
+            elif isinstance(v, (np.integer, np.floating)):
+                val = float(v)
+                # Handle NaN and inf
+                if np.isnan(val):
+                    return None
+                elif np.isinf(val):
+                    return None
+                return val
+            elif hasattr(v, 'isoformat'):  # datetime
+                return v.isoformat()
+            return v
+
+        # Calculate average correlation
+        valid_corrs = [c for c in correlations.values() if c is not None]
+        avg_corr = float(np.mean(valid_corrs)) if valid_corrs else None
+
+        # Calculate average data quality
+        total_valid = sum(qm.get('valid_count', 0) for qm in quality_metrics.values())
+        total_rows = sum(qm.get('total_rows', 0) for qm in quality_metrics.values())
+        avg_valid_pct = (total_valid / total_rows * 100) if total_rows > 0 else 0.0
+
+        # Build comprehensive stats dict
+        comprehensive_stats = {
+            "feature_name": feature_name,
+            "indicator_type": indicator_type,
+            "timestamp": datetime.now().isoformat(),
+            "global_stats": {
+                k: serialize_value(v) for k, v in stats.items()
+                if k not in ['transform_reason']  # Skip list field for now
+            },
+            "transform_needed": stats.get('needs_transform', False),
+            "transform_reasons": stats.get('transform_reason', []),
+            "correlations": {
+                pair: serialize_value(corr)
+                for pair, corr in correlations.items()
+            },
+            "avg_correlation": serialize_value(avg_corr),
+            "data_quality": {
+                "avg_valid_pct": serialize_value(avg_valid_pct),
+                "per_pair": {
+                    pair: {
+                        "valid_pct": serialize_value(qm.get('valid_pct', 0)),
+                        "nan_count": serialize_value(qm.get('nan_count', 0)),
+                        "total_rows": serialize_value(qm.get('total_rows', 0)),
+                    }
+                    for pair, qm in quality_metrics.items()
+                }
+            }
+        }
+
+        # Write to file (use allow_nan=False to ensure valid JSON)
+        # Replace NaN with null before writing
+        import math
+        def replace_nan(obj):
+            if isinstance(obj, dict):
+                return {k: replace_nan(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [replace_nan(item) for item in obj]
+            elif isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
+                return None
+            return obj
+
+        comprehensive_stats = replace_nan(comprehensive_stats)
+
+        with open(stats_file, 'w') as f:
+            json.dump(comprehensive_stats, f, indent=2)
+
+        logger.info(f"Statistics saved to: {stats_file}")
+
+    except Exception as e:
+        logger.error(f"Failed to save statistics to file: {e}")
+
+
 def _plot_feature_across_pairs(
     features_df: pl.DataFrame,
     feature_name: str,
@@ -821,7 +951,13 @@ def _send_to_telegram(
             f"{hashtags}"
         )
 
-        all_figures = plots["feature_analysis"]
+        all_figures = plots.get("feature_analysis", [])
+
+        # Check if we have any figures to send
+        if not all_figures or len(all_figures) == 0:
+            logger.warning("No plots to send to Telegram (empty plots list)")
+            return
+
         notifier.send_plots_group(
             figures=all_figures,
             metric_name=caption,

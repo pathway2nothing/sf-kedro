@@ -5,7 +5,7 @@ telegram:
   image_width: 1400
   image_height: 900
   raise_on_error: false  # Continue pipeline even if Telegram fails
-  send_text_report: true  # Send detailed text report after plots
+  send_text_report: false  # Send detailed text report after plots (disabled by default)
   header_message: |
     📊 <b>SignalFlow Analysis Complete</b>
     

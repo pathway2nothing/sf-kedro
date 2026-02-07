@@ -2,7 +2,7 @@ ipython>=8.10
 jupyterlab>=3.0
 notebook
 kedro~=1.1.1
-signalflow-trading>=0.3.6
+signalflow-trading>=0.3.7
 signalflow-nn>=0.2.6
 signalflow-ta>=0.3.6    
 

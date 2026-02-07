@@ -2,9 +2,9 @@
 
 from typing import Dict, Tuple
 import polars as pl
-import mlflow
 
 import signalflow as sf
+from sf_kedro.utils import mlflow_helper
 
 
 def create_labels(
@@ -39,13 +39,13 @@ def create_labels(
         .agg(pl.count().alias("count"))
     )
     
-    mlflow.log_params({
+    mlflow_helper.log_params({
         "labeler.type": labeler.__class__.__name__,
         "labeler.horizon": labeler_config.get('horizon', 10),
     })
-    
+
     for row in label_dist.iter_rows(named=True):
-        mlflow.log_metric(f"labels.{row['label']}", row['count'])
+        mlflow_helper.log_metric(f"labels.{row['label']}", row['count'])
     
     return labeled_df
 
@@ -94,13 +94,13 @@ def split_train_val_test(
     }
     
     # Log split statistics
-    mlflow.log_params({
+    mlflow_helper.log_params({
         "split.train_ratio": train_ratio,
         "split.val_ratio": val_ratio,
         "split.test_ratio": 1 - train_ratio - val_ratio,
     })
-    
-    mlflow.log_metrics({
+
+    mlflow_helper.log_metrics({
         "split.train_samples": train_data["full"].height,
         "split.val_samples": val_data["full"].height,
         "split.test_samples": test_data["full"].height,

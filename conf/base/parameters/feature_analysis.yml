@@ -2,34 +2,29 @@ feature_analysis:
   data:
     store:
       type: duckdb/spot
-      db_path: "data/01_raw/market.duckdb"
+      db_path: data/01_raw/market.duckdb
     loader:
       type: binance/spot
     pairs:
-      - BTCUSDT
-      - ETHUSDT
-      - SOLUSDT
-      - BNBUSDT
-      - XRPUSDT
+    - BTCUSDT
+    - ETHUSDT
     period:
       start:
-        year: 2025
-        month: 12
+        year: 2026
+        month: 2
         day: 1
       end:
-        year: 2025
-        month: 12
+        year: 2026
+        month: 2
         day: 7
-
   features:
     extractors:
-      - type: "example/rsi"
-      - period: 140
-
+    - type: trend/vhf
+      period: 120
   analysis:
-    feature_name: "rsi_140"
-    price_pair: "BTCUSDT"
-    price_col: "close"
+    feature_name: vhf_120
+    price_pair: BTCUSDT
+    price_col: close
     n_bins: 50
-
-  plots_output_dir: "data/08_reporting/feature_analysis"
+    indicator_type: trend/vhf
+  plots_output_dir: data/08_reporting/feature_analysis

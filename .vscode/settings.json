@@ -1,0 +1,9 @@
+{
+    "python.defaultInterpreterPath": "/home/alastor/miniconda3/envs/sf-kedro/bin/python",
+
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
+}
