@@ -20,15 +20,14 @@ Example window configuration:
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Any, Dict, List, Tuple
 from datetime import datetime, timedelta
 
 import mlflow
 import polars as pl
 import numpy as np
 
-import signalflow as sf
 from signalflow.core import Signals, RawData
 from signalflow.validator import SklearnSignalValidator
 

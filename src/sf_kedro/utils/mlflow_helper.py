@@ -8,7 +8,6 @@ This module provides wrapper functions for MLflow operations that:
 
 import os
 from typing import Any, Dict, Optional
-from pathlib import Path
 
 
 def _is_mlflow_enabled() -> bool:

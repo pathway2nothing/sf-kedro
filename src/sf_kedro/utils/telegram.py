@@ -1,9 +1,7 @@
 # sf_kedro/utils/telegram.py
 
 import os
-from typing import List, Dict, Optional, TYPE_CHECKING
-from pathlib import Path
-import tempfile
+from typing import List, Dict, Optional
 from io import BytesIO
 from loguru import logger
 import plotly.graph_objects as go

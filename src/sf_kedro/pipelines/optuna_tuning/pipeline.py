@@ -55,7 +55,6 @@ from .nodes import (
     tune_detector,
     tune_strategy,
     save_optuna_study,
-    apply_best_params,
 )
 
 

@@ -271,9 +271,6 @@ import bisect
 import datetime as dt
 
 from loguru import logger
-import polars as pl
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 from signalflow.core import StrategyState, sf_component
 from signalflow.analytic.base import StrategyMetric

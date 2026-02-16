@@ -2,7 +2,6 @@
 
 from typing import Dict
 import mlflow
-from pathlib import Path
 
 import signalflow as sf
 
@@ -50,7 +49,7 @@ def create_sklearn_validator(
     X_val = val_df.select(feature_cols)
     y_val = val_df.select("label")
 
-    from sklearn.metrics import accuracy_score, classification_report
+    from sklearn.metrics import accuracy_score
 
     y_pred = validator.model.predict(X_val.to_pandas())
     val_accuracy = accuracy_score(y_val.to_pandas(), y_pred)

@@ -147,9 +147,9 @@ def main():
                 stats = read_latest_stats()
                 if stats:
                     all_stats.append(stats)
-                    print(f"  📊 Statistics collected")
+                    print("  📊 Statistics collected")
             else:
-                print(f"  ❌ Failed!")
+                print("  ❌ Failed!")
                 results["failed"].append(
                     {"registry_name": registry_name, "params": params}
                 )

@@ -1,6 +1,6 @@
 # sf_kedro/custom_modules/classification_metrics.py
 
-from typing import Dict, Any, Tuple, Optional
+from typing import Dict, Any, Tuple
 from dataclasses import dataclass, field
 
 import polars as pl

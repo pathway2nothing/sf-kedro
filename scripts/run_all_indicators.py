@@ -402,9 +402,9 @@ def main():
                 stats = read_latest_stats()
                 if stats:
                     all_stats.append(stats)
-                    print(f"  📊 Statistics collected")
+                    print("  📊 Statistics collected")
             else:
-                print(f"  ❌ Failed!")
+                print("  ❌ Failed!")
                 results["failed"].append(
                     {"registry_name": registry_name, "params": params}
                 )
@@ -447,7 +447,7 @@ def main():
         report_file = Path(
             f"indicator_analysis_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
         )
-        print(f"\n📊 Generating consolidated report...")
+        print("\n📊 Generating consolidated report...")
         generate_consolidated_report(all_stats, report_file)
         print(f"💾 Consolidated report saved to: {report_file}")
 

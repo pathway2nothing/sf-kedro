@@ -5,9 +5,6 @@ import polars as pl
 import mlflow
 
 import signalflow as sf
-import tempfile
-from pathlib import Path
-import plotly.io as pio
 
 
 def detect_signals(

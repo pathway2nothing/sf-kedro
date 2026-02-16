@@ -10,7 +10,7 @@ This module provides nodes for:
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, Tuple
 from pathlib import Path
 
 import mlflow
@@ -19,7 +19,6 @@ from optuna.pruners import MedianPruner, HyperbandPruner
 from optuna.samplers import TPESampler, CmaEsSampler
 
 import polars as pl
-import signalflow as sf
 from signalflow.core import Signals, RawData
 
 
