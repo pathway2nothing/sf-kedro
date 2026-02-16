@@ -1,10 +1,10 @@
 # sf_kedro/utils/telegram.py
 
 import os
-from typing import List, Dict, Optional
 from io import BytesIO
-from loguru import logger
+
 import plotly.graph_objects as go
+from loguru import logger
 
 try:
     import telebot
@@ -22,8 +22,8 @@ class TelegramNotifier:
 
     def __init__(
         self,
-        bot_token: Optional[str] = None,
-        chat_id: Optional[str] = None,
+        bot_token: str | None = None,
+        chat_id: str | None = None,
     ):
         """
         Initialize Telegram notifier.
@@ -61,7 +61,7 @@ class TelegramNotifier:
     def send_plot(
         self,
         fig: go.Figure,
-        caption: Optional[str] = None,
+        caption: str | None = None,
         width: int = 1400,
         height: int = 900,
     ) -> None:
@@ -86,7 +86,7 @@ class TelegramNotifier:
 
     def send_plots_group(
         self,
-        figures: List[go.Figure],
+        figures: list[go.Figure],
         metric_name: str,
         width: int = 1400,
         height: int = 900,
@@ -163,8 +163,8 @@ class TelegramNotifier:
 
     def send_all_metrics_plots(
         self,
-        plots: Dict[str, List[go.Figure] | go.Figure],
-        header_message: Optional[str] = None,
+        plots: dict[str, list[go.Figure] | go.Figure],
+        header_message: str | None = None,
         width: int = 1400,
         height: int = 900,
     ) -> None:
@@ -215,10 +215,10 @@ class TelegramNotifier:
 
 
 def send_plots_to_telegram(
-    plots: Dict[str, List[go.Figure] | go.Figure],
-    bot_token: Optional[str] = None,
-    chat_id: Optional[str] = None,
-    header_message: Optional[str] = None,
+    plots: dict[str, list[go.Figure] | go.Figure],
+    bot_token: str | None = None,
+    chat_id: str | None = None,
+    header_message: str | None = None,
     image_width: int = 1400,
     image_height: int = 900,
 ) -> None:

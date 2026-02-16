@@ -1,19 +1,20 @@
 from __future__ import annotations
 
-from typing import Dict, Any, List, Tuple, Optional
-from pathlib import Path
 import tempfile
+from pathlib import Path
+from typing import Any
 
 import mlflow
 import plotly.graph_objects as go
 from loguru import logger
+
 import signalflow as sf
-from signalflow import StrategyState, RawData
 from sf_kedro.custom_modules.strategy_metrics import *
 from sf_kedro.utils.telegram import send_plots_to_telegram
+from signalflow import RawData, StrategyState
 
 
-def log_last_state_metrics(backtest_results: Dict) -> Dict:
+def log_last_state_metrics(backtest_results: dict) -> dict:
     """
     Calculate and log backtest metrics.
 
@@ -61,17 +62,17 @@ def log_last_state_metrics(backtest_results: Dict) -> Dict:
 
 
 def compute_strategy_metrics(
-    backtest_results: Dict[str, Any],
-    params: Dict[str, Dict[str, Any]],
-    telegram_config: Dict[str, Any] | None = None,
-    strategy_name: Optional[str] = None,
-    raw_data: Optional[RawData] = None,
-    state: Optional[StrategyState] = None,
-) -> Tuple[Dict[str, Any], Dict[str, go.Figure | List[go.Figure]]]:
+    backtest_results: dict[str, Any],
+    params: dict[str, dict[str, Any]],
+    telegram_config: dict[str, Any] | None = None,
+    strategy_name: str | None = None,
+    raw_data: RawData | None = None,
+    state: StrategyState | None = None,
+) -> tuple[dict[str, Any], dict[str, go.Figure | list[go.Figure]]]:
 
     logger.info(f"Computing strategy metrics for {len(params)} metric types")
 
-    metrics: List[Any] = []
+    metrics: list[Any] = []
     for metric_type, metric_params in (params or {}).items():
         logger.debug(f"Loading strategy metric processor: {metric_type}")
         metric_cls = sf.get_component(
@@ -82,8 +83,8 @@ def compute_strategy_metrics(
 
     summary = _build_strategy_summary(backtest_results)
 
-    results: Dict[str, Any] = {"quant": summary, "per_metric": {}}
-    plots: Dict[str, go.Figure | List[go.Figure]] = {}
+    results: dict[str, Any] = {"quant": summary, "per_metric": {}}
+    plots: dict[str, go.Figure | list[go.Figure]] = {}
 
     for metric in metrics:
         metric_name = metric.__class__.__name__
@@ -144,7 +145,7 @@ def compute_strategy_metrics(
 
 
 def save_strategy_plots(
-    plots: Dict[str, go.Figure | List[go.Figure]],
+    plots: dict[str, go.Figure | list[go.Figure]],
     output_dir: str,
 ) -> None:
     """
@@ -182,7 +183,7 @@ def save_strategy_plots(
     logger.info(f"Total saved {total_saved} plots to {output_path}")
 
 
-def _build_strategy_summary(backtest_results: Dict[str, Any]) -> Dict[str, Any]:
+def _build_strategy_summary(backtest_results: dict[str, Any]) -> dict[str, Any]:
     """
     Try to extract standard scalars from backtest_results.
     Keep it tolerant to missing keys.
@@ -212,8 +213,8 @@ def _build_strategy_summary(backtest_results: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _log_metrics_to_mlflow(
-    results: Dict[str, Any],
-    plots: Dict[str, go.Figure | List[go.Figure] | None],
+    results: dict[str, Any],
+    plots: dict[str, go.Figure | list[go.Figure] | None],
     artifact_root: str,
 ) -> None:
     """

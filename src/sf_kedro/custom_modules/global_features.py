@@ -1,8 +1,10 @@
 from dataclasses import dataclass
+from typing import Any
+
 import polars as pl
+
 import signalflow as sf
 from signalflow import sf_component
-from typing import Any
 
 
 @dataclass

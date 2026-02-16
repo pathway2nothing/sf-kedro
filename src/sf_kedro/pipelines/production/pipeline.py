@@ -1,18 +1,19 @@
 """Production pipeline definition."""
 
 from kedro.pipeline import Pipeline, node, pipeline
+
 from sf_kedro.general_nodes import (
-    load_raw_data_from_storage,
+    compute_signal_metrics,
+    compute_strategy_metrics,
     detect_signals,
     extract_validation_features,
+    load_raw_data_from_storage,
     load_validator_from_registry,
-    validate_signals,
-    run_backtest,
-    compute_signal_metrics,
-    save_signal_plots,
-    compute_strategy_metrics,
-    save_strategy_plots,
     log_last_state_metrics,
+    run_backtest,
+    save_signal_plots,
+    save_strategy_plots,
+    validate_signals,
 )
 
 

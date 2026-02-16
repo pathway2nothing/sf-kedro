@@ -1,15 +1,15 @@
 """Signal detection and processing."""
 
-from typing import Dict
-import polars as pl
+
 import mlflow
+import polars as pl
 
 import signalflow as sf
 
 
 def detect_signals(
     raw_data: sf.RawData,
-    detector_config: Dict,
+    detector_config: dict,
 ) -> sf.Signals:
     """
     Detect trading signals.

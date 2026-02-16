@@ -41,20 +41,20 @@ Configuration in parameters.yml:
 from kedro.pipeline import Pipeline, node, pipeline
 
 from sf_kedro.general_nodes import (
-    download_market_data,
-    load_raw_data_from_storage,
-    detect_signals,
-    extract_validation_features,
     create_labels,
+    detect_signals,
+    download_market_data,
+    extract_validation_features,
+    load_raw_data_from_storage,
     split_train_val_test,
 )
 
 from .nodes import (
     create_optuna_study,
-    tune_validator,
+    save_optuna_study,
     tune_detector,
     tune_strategy,
-    save_optuna_study,
+    tune_validator,
 )
 
 

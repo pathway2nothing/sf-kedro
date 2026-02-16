@@ -10,23 +10,22 @@ This module provides nodes for:
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Tuple
 from pathlib import Path
+from typing import Any
 
 import mlflow
 import optuna
-from optuna.pruners import MedianPruner, HyperbandPruner
-from optuna.samplers import TPESampler, CmaEsSampler
-
 import polars as pl
-from signalflow.core import Signals, RawData
+from optuna.pruners import HyperbandPruner, MedianPruner
+from optuna.samplers import CmaEsSampler, TPESampler
 
+from signalflow.core import RawData, Signals
 
 logger = logging.getLogger(__name__)
 
 
 def create_optuna_study(
-    study_config: Dict[str, Any],
+    study_config: dict[str, Any],
 ) -> optuna.Study:
     """Create an Optuna study with specified configuration.
 
@@ -44,7 +43,7 @@ def create_optuna_study(
     """
     study_name = study_config.get("study_name", "signalflow_tuning")
     direction = study_config.get("direction", "maximize")
-    storage = study_config.get("storage", None)
+    storage = study_config.get("storage")
     load_if_exists = study_config.get("load_if_exists", True)
 
     # Configure sampler
@@ -79,7 +78,7 @@ def create_optuna_study(
     return study
 
 
-def _create_sampler(config: Dict[str, Any]) -> optuna.samplers.BaseSampler:
+def _create_sampler(config: dict[str, Any]) -> optuna.samplers.BaseSampler:
     """Create Optuna sampler from config."""
     sampler_type = config.get("type", "tpe")
 
@@ -94,7 +93,7 @@ def _create_sampler(config: Dict[str, Any]) -> optuna.samplers.BaseSampler:
         return TPESampler(seed=42)
 
 
-def _create_pruner(config: Dict[str, Any]) -> optuna.pruners.BasePruner:
+def _create_pruner(config: dict[str, Any]) -> optuna.pruners.BasePruner:
     """Create Optuna pruner from config."""
     pruner_type = config.get("type", "median")
 
@@ -114,10 +113,10 @@ def _create_pruner(config: Dict[str, Any]) -> optuna.pruners.BasePruner:
 
 def tune_validator(
     study: optuna.Study,
-    train_data: Dict[str, Any],
-    val_data: Dict[str, Any],
-    tuning_config: Dict[str, Any],
-) -> Tuple[Dict[str, Any], object]:
+    train_data: dict[str, Any],
+    val_data: dict[str, Any],
+    tuning_config: dict[str, Any],
+) -> tuple[dict[str, Any], object]:
     """Tune validator hyperparameters using Optuna.
 
     Args:
@@ -134,11 +133,12 @@ def tune_validator(
     Returns:
         Tuple of (best_params, trained_validator)
     """
-    from signalflow.validator import SklearnSignalValidator
     from sklearn.metrics import accuracy_score, f1_score
 
+    from signalflow.validator import SklearnSignalValidator
+
     n_trials = tuning_config.get("n_trials", 50)
-    timeout = tuning_config.get("timeout", None)
+    timeout = tuning_config.get("timeout")
     validator_type = tuning_config.get("validator_type", "sklearn")
     model_size = tuning_config.get("model_size", "medium")
     metric = tuning_config.get("metric", "accuracy")
@@ -211,8 +211,8 @@ def tune_detector(
     study: optuna.Study,
     raw_data: RawData,
     labels: pl.DataFrame,
-    tuning_config: Dict[str, Any],
-) -> Tuple[Dict[str, Any], Signals]:
+    tuning_config: dict[str, Any],
+) -> tuple[dict[str, Any], Signals]:
     """Tune detector hyperparameters using Optuna.
 
     Args:
@@ -228,10 +228,10 @@ def tune_detector(
     Returns:
         Tuple of (best_params, signals_with_best_params)
     """
-    from signalflow.core import default_registry, SfComponentType
+    from signalflow.core import SfComponentType, default_registry
 
     n_trials = tuning_config.get("n_trials", 30)
-    timeout = tuning_config.get("timeout", None)
+    timeout = tuning_config.get("timeout")
     detector_name = tuning_config.get("detector_name")
     model_size = tuning_config.get("model_size", "medium")
     metric = tuning_config.get("metric", "precision")
@@ -337,8 +337,8 @@ def tune_strategy(
     study: optuna.Study,
     raw_data: RawData,
     signals: Signals,
-    tuning_config: Dict[str, Any],
-) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    tuning_config: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """Tune strategy (entry/exit) hyperparameters using Optuna.
 
     Args:
@@ -353,14 +353,14 @@ def tune_strategy(
     Returns:
         Tuple of (best_params, backtest_results)
     """
-    from signalflow.strategy.runner import BacktestRunner
-    from signalflow.strategy.component.entry.signal import SignalEntryRule
-    from signalflow.strategy.component.exit.tp_sl import TakeProfitStopLossExit
     from signalflow.strategy.broker import BacktestBroker
     from signalflow.strategy.broker.executor import VirtualSpotExecutor
+    from signalflow.strategy.component.entry.signal import SignalEntryRule
+    from signalflow.strategy.component.exit.tp_sl import TakeProfitStopLossExit
+    from signalflow.strategy.runner import BacktestRunner
 
     n_trials = tuning_config.get("n_trials", 50)
-    timeout = tuning_config.get("timeout", None)
+    timeout = tuning_config.get("timeout")
     metric = tuning_config.get("metric", "sharpe")
     initial_capital = tuning_config.get("initial_capital", 10_000.0)
 
@@ -499,6 +499,7 @@ def save_optuna_study(
         Path to saved study
     """
     import json
+
     from optuna.visualization import (
         plot_optimization_history,
         plot_param_importances,
@@ -568,10 +569,10 @@ def save_optuna_study(
 
 
 def apply_best_params(
-    best_params: Dict[str, Any],
+    best_params: dict[str, Any],
     component_type: str,
-    component_config: Dict[str, Any],
-) -> Dict[str, Any]:
+    component_config: dict[str, Any],
+) -> dict[str, Any]:
     """Apply best parameters to component configuration.
 
     Args:

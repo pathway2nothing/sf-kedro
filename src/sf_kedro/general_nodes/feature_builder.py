@@ -1,13 +1,13 @@
 """Feature extraction utilities."""
 
-from typing import Dict, List
-import polars as pl
+
 import mlflow
+import polars as pl
 
 import signalflow as sf
 
 
-def create_feature_set(feature_configs: List[Dict]) -> sf.feature.FeaturePipeline:
+def create_feature_set(feature_configs: list[dict]) -> sf.feature.FeaturePipeline:
     """
     Create FeaturePipeline from configurations.
 
@@ -37,7 +37,7 @@ def create_feature_set(feature_configs: List[Dict]) -> sf.feature.FeaturePipelin
 def extract_validation_features(
     raw_data: sf.RawData,
     raw_signals: pl.DataFrame,
-    feature_configs: List[Dict],
+    feature_configs: list[dict],
 ) -> pl.DataFrame:
     """
     Extract features for validation model.

@@ -1,19 +1,19 @@
 """Data loading and storage operations."""
 
 import asyncio
-from pathlib import Path
 from datetime import datetime
-from typing import Dict, List
+from pathlib import Path
+
 import mlflow
 
 import signalflow as sf
 
 
 def download_market_data(
-    store_config: Dict,
-    loader_config: Dict,
-    period: Dict,
-    pairs: List[str],
+    store_config: dict,
+    loader_config: dict,
+    period: dict,
+    pairs: list[str],
 ) -> str:
     """
     Download market data from Binance to DuckDB storage.
@@ -70,9 +70,9 @@ def download_market_data(
 
 
 def load_raw_data_from_storage(
-    store_config: Dict,
-    period: Dict,
-    pairs: List[str],
+    store_config: dict,
+    period: dict,
+    pairs: list[str],
     store_path: str,
 ) -> sf.RawData:
     db_path = Path(store_path)

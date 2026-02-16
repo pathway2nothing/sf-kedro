@@ -7,7 +7,7 @@ This module provides wrapper functions for MLflow operations that:
 """
 
 import os
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 def _is_mlflow_enabled() -> bool:
@@ -28,7 +28,7 @@ def _get_mlflow():
         return None
 
 
-def log_params(params: Dict[str, Any]) -> None:
+def log_params(params: dict[str, Any]) -> None:
     """
     Safely log parameters to MLflow.
 
@@ -64,7 +64,7 @@ def log_param(key: str, value: Any) -> None:
         pass
 
 
-def log_metrics(metrics: Dict[str, float]) -> None:
+def log_metrics(metrics: dict[str, float]) -> None:
     """
     Safely log metrics to MLflow.
 
@@ -81,7 +81,7 @@ def log_metrics(metrics: Dict[str, float]) -> None:
         pass
 
 
-def log_metric(key: str, value: float, step: Optional[int] = None) -> None:
+def log_metric(key: str, value: float, step: int | None = None) -> None:
     """
     Safely log a single metric to MLflow.
 
@@ -103,7 +103,7 @@ def log_metric(key: str, value: float, step: Optional[int] = None) -> None:
         pass
 
 
-def log_artifact(local_path: str, artifact_path: Optional[str] = None) -> None:
+def log_artifact(local_path: str, artifact_path: str | None = None) -> None:
     """
     Safely log an artifact to MLflow.
 
@@ -124,7 +124,7 @@ def log_artifact(local_path: str, artifact_path: Optional[str] = None) -> None:
         pass
 
 
-def log_artifacts(local_dir: str, artifact_path: Optional[str] = None) -> None:
+def log_artifacts(local_dir: str, artifact_path: str | None = None) -> None:
     """
     Safely log a directory of artifacts to MLflow.
 
@@ -163,7 +163,7 @@ def set_tag(key: str, value: Any) -> None:
         pass
 
 
-def set_tags(tags: Dict[str, Any]) -> None:
+def set_tags(tags: dict[str, Any]) -> None:
     """
     Safely set multiple tags in MLflow.
 

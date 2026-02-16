@@ -1,25 +1,27 @@
-from typing import Dict, Any, List, Tuple, Optional
-import polars as pl
-import plotly.graph_objects as go
-import mlflow
 import tempfile
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+import mlflow
+import plotly.graph_objects as go
+import polars as pl
 from loguru import logger
+
 import signalflow as sf
-from sf_kedro.utils.telegram import send_plots_to_telegram
 from sf_kedro.custom_modules import *
+from sf_kedro.utils.telegram import send_plots_to_telegram
 from signalflow.analytic.signals import *
 
 
 def compute_signal_metrics(
-    params: Dict[str, Dict[str, Any]],
+    params: dict[str, dict[str, Any]],
     raw_data: sf.RawData,
     signals: sf.Signals,
     labels: pl.DataFrame | None = None,
-    telegram_config: Dict[str, Any] | None = None,
-    strategy_name: Optional[str] = None,
-) -> Tuple[Dict[str, Any], Dict[str, List[go.Figure]]]:
+    telegram_config: dict[str, Any] | None = None,
+    strategy_name: str | None = None,
+) -> tuple[dict[str, Any], dict[str, list[go.Figure]]]:
     """
     Compute signal metrics and log to MLflow.
 
@@ -36,7 +38,7 @@ def compute_signal_metrics(
     """
     logger.info(f"Computing signal metrics for {len(params)} metric types")
 
-    metrics: List[sf.analytic.SignalMetric] = []
+    metrics: list[sf.analytic.SignalMetric] = []
     for metric_type, metric_params in params.items():
         logger.debug(f"Loading metric processor: {metric_type}")
         metric_processor = sf.get_component(
@@ -145,7 +147,7 @@ def compute_signal_metrics(
 
 
 def save_signal_plots(
-    plots: Dict[str, List[go.Figure]],
+    plots: dict[str, list[go.Figure]],
     output_dir: str,
 ) -> None:
     """
@@ -185,7 +187,7 @@ def save_signal_plots(
 
 
 def _log_metrics_to_mlflow(
-    results: Dict[str, Any], plots: Dict[str, List[go.Figure] | go.Figure | None]
+    results: dict[str, Any], plots: dict[str, list[go.Figure] | go.Figure | None]
 ) -> None:
     """Log computed metrics and plots to MLflow."""
 

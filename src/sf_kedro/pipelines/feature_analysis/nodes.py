@@ -1,15 +1,15 @@
 """Feature analysis pipeline nodes."""
 
-from typing import Dict, Any, List, Optional
-from pathlib import Path
-from datetime import datetime
 import json
+from datetime import datetime
+from pathlib import Path
+from typing import Any
 
-import polars as pl
 import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+import polars as pl
 from loguru import logger
+from plotly.subplots import make_subplots
 
 import signalflow as sf
 from sf_kedro.general_nodes.feature_builder import create_feature_set
@@ -32,7 +32,7 @@ PAIR_COLORS = [
 
 def extract_features_for_analysis(
     raw_data: sf.RawData,
-    feature_configs: Dict,
+    feature_configs: dict,
 ) -> pl.DataFrame:
     """
     Extract features from raw data for analysis.
@@ -60,9 +60,9 @@ def extract_features_for_analysis(
 def build_feature_analysis_plots(
     raw_data: sf.RawData,
     features_df: pl.DataFrame,
-    analysis_params: Dict[str, Any],
-    telegram_config: Optional[Dict[str, Any]] = None,
-) -> Dict[str, List[go.Figure]]:
+    analysis_params: dict[str, Any],
+    telegram_config: dict[str, Any] | None = None,
+) -> dict[str, list[go.Figure]]:
     """
     Build 4 feature analysis plots and optionally send to Telegram.
 
@@ -85,7 +85,7 @@ def build_feature_analysis_plots(
     price_pair = analysis_params.get("price_pair", "BTCUSDT")
     price_col = analysis_params.get("price_col", "close")
     n_bins = analysis_params.get("n_bins", 50)
-    indicator_type = analysis_params.get("indicator_type", None)
+    indicator_type = analysis_params.get("indicator_type")
 
     pairs = sorted(features_df["pair"].unique().to_list())
     logger.info(
@@ -160,7 +160,7 @@ def build_feature_analysis_plots(
 
 
 def save_feature_analysis_plots(
-    plots: Dict[str, List[go.Figure]],
+    plots: dict[str, list[go.Figure]],
     output_dir: str,
 ) -> None:
     """
@@ -200,8 +200,8 @@ def save_feature_analysis_plots(
 def _calculate_feature_statistics(
     features_df: pl.DataFrame,
     feature_name: str,
-    pairs: List[str],
-) -> Dict[str, Any]:
+    pairs: list[str],
+) -> dict[str, Any]:
     """Calculate statistical metrics for the feature across all pairs."""
     # Check if feature exists in dataframe
     if feature_name not in features_df.columns:
@@ -275,9 +275,9 @@ def _calculate_pair_correlations(
     features_df: pl.DataFrame,
     raw_data: sf.RawData,
     feature_name: str,
-    pairs: List[str],
+    pairs: list[str],
     price_col: str,
-) -> Dict[str, Optional[float]]:
+) -> dict[str, float | None]:
     """
     Calculate Pearson correlation between feature and price for each pair.
 
@@ -343,8 +343,8 @@ def _calculate_pair_correlations(
 def _calculate_data_quality(
     features_df: pl.DataFrame,
     feature_name: str,
-    pairs: List[str],
-) -> Dict[str, Dict[str, Any]]:
+    pairs: list[str],
+) -> dict[str, dict[str, Any]]:
     """
     Calculate data quality metrics for each pair.
 
@@ -419,11 +419,11 @@ def _calculate_data_quality(
 
 def _format_text_report(
     feature_name: str,
-    pairs: List[str],
-    stats: Dict[str, Any],
-    correlations: Dict[str, Optional[float]],
-    quality_metrics: Dict[str, Dict[str, Any]],
-    indicator_type: Optional[str] = None,
+    pairs: list[str],
+    stats: dict[str, Any],
+    correlations: dict[str, float | None],
+    quality_metrics: dict[str, dict[str, Any]],
+    indicator_type: str | None = None,
 ) -> str:
     """
     Format all metrics into readable HTML text for Telegram.
@@ -545,10 +545,10 @@ def _generate_text_report(
     features_df: pl.DataFrame,
     raw_data: sf.RawData,
     feature_name: str,
-    pairs: List[str],
+    pairs: list[str],
     price_col: str,
-    stats: Dict[str, Any],
-    indicator_type: Optional[str] = None,
+    stats: dict[str, Any],
+    indicator_type: str | None = None,
 ) -> str:
     """
     Generate comprehensive text report for feature analysis.
@@ -585,10 +585,10 @@ def _generate_text_report(
 
 def _save_statistics_to_file(
     feature_name: str,
-    indicator_type: Optional[str],
-    stats: Dict[str, Any],
-    correlations: Dict[str, Optional[float]],
-    quality_metrics: Dict[str, Dict[str, Any]],
+    indicator_type: str | None,
+    stats: dict[str, Any],
+    correlations: dict[str, float | None],
+    quality_metrics: dict[str, dict[str, Any]],
     output_dir: str,
 ) -> None:
     """
@@ -616,9 +616,7 @@ def _save_statistics_to_file(
             elif isinstance(v, (np.integer, np.floating)):
                 val = float(v)
                 # Handle NaN and inf
-                if np.isnan(val):
-                    return None
-                elif np.isinf(val):
+                if np.isnan(val) or np.isinf(val):
                     return None
                 return val
             elif hasattr(v, "isoformat"):  # datetime
@@ -690,7 +688,7 @@ def _save_statistics_to_file(
 def _plot_feature_across_pairs(
     features_df: pl.DataFrame,
     feature_name: str,
-    pairs: List[str],
+    pairs: list[str],
 ) -> go.Figure:
     """Plot 1: Feature values over time, one line per pair."""
     fig = go.Figure()
@@ -810,7 +808,7 @@ def _plot_feature_vs_price(
 def _plot_feature_distribution(
     features_df: pl.DataFrame,
     feature_name: str,
-    pairs: List[str],
+    pairs: list[str],
     n_bins: int,
 ) -> go.Figure:
     """Plot 3: Histogram of feature values."""
@@ -859,7 +857,7 @@ def _plot_feature_distribution(
 def _plot_feature_normalized(
     features_df: pl.DataFrame,
     feature_name: str,
-    pairs: List[str],
+    pairs: list[str],
 ) -> go.Figure:
     """Plot 4: Z-score normalized feature across pairs."""
     fig = go.Figure()
@@ -913,7 +911,7 @@ def _plot_feature_normalized(
     return fig
 
 
-def _base_layout() -> Dict[str, Any]:
+def _base_layout() -> dict[str, Any]:
     """Shared layout settings consistent with existing project plots."""
     return dict(
         height=900,
@@ -935,13 +933,13 @@ def _base_layout() -> Dict[str, Any]:
 
 
 def _send_to_telegram(
-    plots: Dict[str, List[go.Figure]],
-    telegram_config: Dict[str, Any],
+    plots: dict[str, list[go.Figure]],
+    telegram_config: dict[str, Any],
     feature_name: str,
-    pairs: List[str],
-    indicator_type: Optional[str] = None,
-    stats: Optional[Dict[str, Any]] = None,
-    text_report: Optional[str] = None,
+    pairs: list[str],
+    indicator_type: str | None = None,
+    stats: dict[str, Any] | None = None,
+    text_report: str | None = None,
 ) -> None:
     """Send all plots as one Telegram media group with hashtags and statistics, followed by optional text report."""
     try:

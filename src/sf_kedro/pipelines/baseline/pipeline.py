@@ -1,17 +1,18 @@
 # sf_kedro/pipelines/baseline/pipeline.py
 
 from kedro.pipeline import Pipeline, node, pipeline
+
 from sf_kedro.general_nodes import (
+    compute_signal_metrics,
+    compute_strategy_metrics,
+    create_labels,
+    detect_signals,
     download_market_data,
     load_raw_data_from_storage,
-    detect_signals,
-    create_labels,
-    compute_signal_metrics,
-    save_signal_plots,
-    run_backtest,
     log_last_state_metrics,
+    run_backtest,
+    save_signal_plots,
     save_strategy_plots,
-    compute_strategy_metrics,
 )
 
 

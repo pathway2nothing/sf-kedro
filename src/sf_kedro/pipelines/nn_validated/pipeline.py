@@ -1,21 +1,22 @@
 """NN validated pipeline definition."""
 
 from kedro.pipeline import Pipeline, node, pipeline
+
 from sf_kedro.general_nodes import (
-    download_market_data,
-    load_raw_data_from_storage,
-    detect_signals,
-    extract_validation_features,
-    create_labels,
-    split_train_val_test,
-    create_nn_validator,
-    validate_signals,
-    run_backtest,
     compute_signal_metrics,
-    save_signal_plots,
     compute_strategy_metrics,
-    save_strategy_plots,
+    create_labels,
+    create_nn_validator,
+    detect_signals,
+    download_market_data,
+    extract_validation_features,
+    load_raw_data_from_storage,
     log_last_state_metrics,
+    run_backtest,
+    save_signal_plots,
+    save_strategy_plots,
+    split_train_val_test,
+    validate_signals,
 )
 
 

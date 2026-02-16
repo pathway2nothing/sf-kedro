@@ -21,16 +21,15 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple
 from datetime import datetime, timedelta
+from typing import Any
 
 import mlflow
-import polars as pl
 import numpy as np
+import polars as pl
 
-from signalflow.core import Signals, RawData
+from signalflow.core import RawData, Signals
 from signalflow.validator import SklearnSignalValidator
-
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +45,11 @@ class WalkForwardWindow:
     test_end: datetime
 
     @property
-    def train_period(self) -> Tuple[datetime, datetime]:
+    def train_period(self) -> tuple[datetime, datetime]:
         return (self.train_start, self.train_end)
 
     @property
-    def test_period(self) -> Tuple[datetime, datetime]:
+    def test_period(self) -> tuple[datetime, datetime]:
         return (self.test_start, self.test_end)
 
 
@@ -58,9 +57,9 @@ class WalkForwardWindow:
 class WalkForwardResult:
     """Aggregated results from walk-forward validation."""
 
-    windows: List[WalkForwardWindow]
-    window_results: List[Dict[str, Any]]
-    aggregated_metrics: Dict[str, float]
+    windows: list[WalkForwardWindow]
+    window_results: list[dict[str, Any]]
+    aggregated_metrics: dict[str, float]
     trades_df: pl.DataFrame
     equity_curve: pl.DataFrame
 
@@ -101,8 +100,8 @@ class WalkForwardResult:
 
 def create_walk_forward_windows(
     raw_data: RawData,
-    config: Dict[str, Any],
-) -> List[WalkForwardWindow]:
+    config: dict[str, Any],
+) -> list[WalkForwardWindow]:
     """Create walk-forward validation windows.
 
     Args:
@@ -127,7 +126,7 @@ def create_walk_forward_windows(
     train_size = timedelta(days=config.get("train_size", 60))
     test_size = timedelta(days=config.get("test_size", 14))
     step_size = timedelta(days=config.get("step_size", config.get("test_size", 14)))
-    n_windows = config.get("n_windows", None)
+    n_windows = config.get("n_windows")
 
     windows = []
     window_id = 0
@@ -180,8 +179,8 @@ def run_walk_forward_validation(
     signals: Signals,
     features_df: pl.DataFrame,
     labels_df: pl.DataFrame,
-    windows: List[WalkForwardWindow],
-    config: Dict[str, Any],
+    windows: list[WalkForwardWindow],
+    config: dict[str, Any],
 ) -> WalkForwardResult:
     """Run walk-forward validation across all windows.
 
@@ -199,11 +198,11 @@ def run_walk_forward_validation(
     Returns:
         WalkForwardResult with aggregated metrics
     """
-    from signalflow.strategy.runner import BacktestRunner
-    from signalflow.strategy.component.entry.signal import SignalEntryRule
-    from signalflow.strategy.component.exit.tp_sl import TakeProfitStopLossExit
     from signalflow.strategy.broker import BacktestBroker
     from signalflow.strategy.broker.executor import VirtualSpotExecutor
+    from signalflow.strategy.component.entry.signal import SignalEntryRule
+    from signalflow.strategy.component.exit.tp_sl import TakeProfitStopLossExit
+    from signalflow.strategy.runner import BacktestRunner
 
     validator_config = config.get("validator", {})
     strategy_config = config.get("strategy", {})
@@ -410,7 +409,7 @@ def run_walk_forward_validation(
 def _train_validator(
     features_df: pl.DataFrame,
     labels_df: pl.DataFrame,
-    config: Dict[str, Any],
+    config: dict[str, Any],
 ) -> SklearnSignalValidator:
     """Train validator for a single window."""
     # Merge features with labels
@@ -451,10 +450,10 @@ def _validate_signals(
 
 
 def _aggregate_metrics(
-    window_results: List[Dict[str, Any]],
+    window_results: list[dict[str, Any]],
     initial_capital: float,
     final_capital: float,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Aggregate metrics across all windows."""
     if not window_results:
         return {"total_return": 0, "sharpe": 0, "n_windows": 0, "n_trades": 0}
@@ -560,7 +559,7 @@ def save_walk_forward_results(
 
 
 def compare_walk_forward_strategies(
-    results: Dict[str, WalkForwardResult],
+    results: dict[str, WalkForwardResult],
 ) -> pl.DataFrame:
     """Compare multiple strategies from walk-forward validation.
 

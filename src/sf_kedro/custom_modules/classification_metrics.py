@@ -1,19 +1,19 @@
 # sf_kedro/custom_modules/classification_metrics.py
 
-from typing import Dict, Any, Tuple
 from dataclasses import dataclass, field
+from typing import Any
 
-import polars as pl
 import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+import polars as pl
 from loguru import logger
+from plotly.subplots import make_subplots
 from sklearn.metrics import (
+    confusion_matrix,
+    f1_score,
+    log_loss,
     precision_score,
     recall_score,
-    f1_score,
-    confusion_matrix,
-    log_loss,
 )
 
 import signalflow as sf
@@ -74,7 +74,7 @@ class SignalClassificationMetric(sf.analytic.SignalMetric):
         raw_data: sf.RawData,
         signals: sf.Signals,
         labels: pl.DataFrame | None = None,
-    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         """Compute classification metrics."""
 
         if labels is None:
@@ -143,7 +143,7 @@ class SignalClassificationMetric(sf.analytic.SignalMetric):
 
         positive_rate = np.mean(y_true)
 
-        from sklearn.metrics import roc_curve, roc_auc_score
+        from sklearn.metrics import roc_auc_score, roc_curve
 
         if len(np.unique(y_true)) > 1:
             try:
@@ -234,8 +234,8 @@ class SignalClassificationMetric(sf.analytic.SignalMetric):
 
     def plot(
         self,
-        computed_metrics: Dict[str, Any],
-        plots_context: Dict[str, Any],
+        computed_metrics: dict[str, Any],
+        plots_context: dict[str, Any],
         raw_data: sf.RawData,
         signals: sf.Signals,
         labels: pl.DataFrame | None = None,

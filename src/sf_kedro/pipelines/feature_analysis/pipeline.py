@@ -1,13 +1,15 @@
 """Feature analysis pipeline definition."""
 
 from kedro.pipeline import Pipeline, node, pipeline
+
 from sf_kedro.general_nodes import (
     download_market_data,
     load_raw_data_from_storage,
 )
+
 from .nodes import (
-    extract_features_for_analysis,
     build_feature_analysis_plots,
+    extract_features_for_analysis,
     save_feature_analysis_plots,
 )
 

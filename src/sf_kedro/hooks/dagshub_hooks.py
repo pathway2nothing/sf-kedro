@@ -1,9 +1,10 @@
 """DagsHub integration hooks."""
 
-from kedro.framework.hooks import hook_impl
 import os
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
+
+from kedro.framework.hooks import hook_impl
 
 
 class DagsHubHook:
@@ -25,7 +26,7 @@ class DagsHubHook:
         return True
 
     @hook_impl
-    def before_pipeline_run(self, run_params: Dict[str, Any], pipeline, catalog):
+    def before_pipeline_run(self, run_params: dict[str, Any], pipeline, catalog):
         """Initialize DagsHub and MLflow tracking."""
 
         # Skip if MLflow is disabled or repo not configured
@@ -96,7 +97,7 @@ class DagsHubHook:
             self.mlflow_available = False
 
     @hook_impl
-    def after_pipeline_run(self, run_params: Dict[str, Any], pipeline, catalog):
+    def after_pipeline_run(self, run_params: dict[str, Any], pipeline, catalog):
         """Finalize MLflow run."""
         if not self.mlflow_available:
             return
@@ -113,7 +114,7 @@ class DagsHubHook:
 
     @hook_impl
     def on_pipeline_error(
-        self, error: Exception, run_params: Dict[str, Any], pipeline, catalog
+        self, error: Exception, run_params: dict[str, Any], pipeline, catalog
     ):
         """Log error and mark run as failed."""
         if not self.mlflow_available:

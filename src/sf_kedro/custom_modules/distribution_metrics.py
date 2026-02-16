@@ -1,12 +1,12 @@
 ### TODO: fix this logic
-from typing import Dict, Any, Tuple
 from dataclasses import dataclass
+from typing import Any
 
-import polars as pl
 import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+import polars as pl
 from loguru import logger
+from plotly.subplots import make_subplots
 
 import signalflow as sf
 
@@ -27,7 +27,7 @@ class SignalDistributionMetric(sf.analytic.SignalMetric):
         raw_data: sf.RawData,
         signals: sf.Signals,
         labels: pl.DataFrame | None = None,
-    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         """Compute signal distribution metrics."""
 
         signals_df = signals.value
@@ -169,8 +169,8 @@ class SignalDistributionMetric(sf.analytic.SignalMetric):
 
     def plot(
         self,
-        computed_metrics: Dict[str, Any],
-        plots_context: Dict[str, Any],
+        computed_metrics: dict[str, Any],
+        plots_context: dict[str, Any],
         raw_data: sf.RawData,
         signals: sf.Signals,
         labels: pl.DataFrame | None = None,

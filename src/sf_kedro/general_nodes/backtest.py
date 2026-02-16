@@ -1,6 +1,6 @@
 """Backtesting utilities."""
 
-from typing import Dict
+
 from loguru import logger
 
 import signalflow as sf
@@ -10,8 +10,8 @@ from signalflow.analytic.strategy import *
 def run_backtest(
     raw_data: sf.RawData,
     validated_signals: sf.Signals,
-    strategy_config: Dict,
-) -> Dict:
+    strategy_config: dict,
+) -> dict:
     """
     Run backtest with validated signals.
 
@@ -23,9 +23,9 @@ def run_backtest(
     Returns:
         Backtest results dict
     """
+    from signalflow.data.strategy_store import DuckDbStrategyStore
     from signalflow.strategy.broker import BacktestBroker
     from signalflow.strategy.broker.executor import VirtualSpotExecutor
-    from signalflow.data.strategy_store import DuckDbStrategyStore
     from signalflow.strategy.runner import OptimizedBacktestRunner
 
     # Create components

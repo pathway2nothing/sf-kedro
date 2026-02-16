@@ -1,11 +1,11 @@
-from .profile_metrics import SignalProfileMetric
-from .distribution_metrics import SignalDistributionMetric
 from .classification_metrics import SignalClassificationMetric
+from .distribution_metrics import SignalDistributionMetric
 from .global_features import MarketLogReturnFeature
+from .profile_metrics import SignalProfileMetric
 
 __all__ = [
-    "SignalProfileMetric",
-    "SignalDistributionMetric",
-    "SignalClassificationMetric",
     "MarketLogReturnFeature",
+    "SignalClassificationMetric",
+    "SignalDistributionMetric",
+    "SignalProfileMetric",
 ]

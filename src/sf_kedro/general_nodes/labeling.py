@@ -1,6 +1,6 @@
 """Labeling and data splitting."""
 
-from typing import Dict, Tuple
+
 import polars as pl
 
 import signalflow as sf
@@ -10,7 +10,7 @@ from sf_kedro.utils import mlflow_helper
 def create_labels(
     raw_data: sf.RawData,
     signals: sf.Signals,
-    labeler_config: Dict,
+    labeler_config: dict,
 ) -> pl.DataFrame:
     """
     Create labels for validation training.
@@ -50,8 +50,8 @@ def create_labels(
 def split_train_val_test(
     labeled_data: pl.DataFrame,
     features: pl.DataFrame,
-    split_config: Dict,
-) -> Tuple[Dict, Dict, Dict]:
+    split_config: dict,
+) -> tuple[dict, dict, dict]:
     """
     Split data into train/val/test sets.
 

@@ -1,15 +1,15 @@
 """Validator creation and loading."""
 
-from typing import Dict
+
 import mlflow
 
 import signalflow as sf
 
 
 def create_sklearn_validator(
-    train_data: Dict,
-    val_data: Dict,
-    model_config: Dict,
+    train_data: dict,
+    val_data: dict,
+    model_config: dict,
 ) -> sf.validator.SklearnSignalValidator:
     """
     Create and train sklearn validator.
@@ -75,10 +75,10 @@ def create_sklearn_validator(
 
 
 def create_nn_validator(
-    train_data: Dict,
-    val_data: Dict,
-    model_config: Dict,
-    trainer_config: Dict,
+    train_data: dict,
+    val_data: dict,
+    model_config: dict,
+    trainer_config: dict,
 ) -> object:
     """
     Create and train neural network validator.
@@ -93,8 +93,9 @@ def create_nn_validator(
         Trained neural validator
     """
     import lightning as L
+    from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
     from lightning.pytorch.loggers import MLFlowLogger
-    from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
+
     from signalflow.nn.validator import TemporalValidator
 
     # Create validator
@@ -133,8 +134,8 @@ def create_nn_validator(
     )
 
     # Prepare dataloaders (simplified - implement properly)
-    from torch.utils.data import DataLoader, TensorDataset
     import torch
+    from torch.utils.data import DataLoader, TensorDataset
 
     def create_dataloader(data_dict, batch_size=32):
         df = data_dict["full"]
