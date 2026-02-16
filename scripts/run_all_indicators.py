@@ -35,18 +35,17 @@ def get_all_indicator_classes() -> List[tuple]:
     for registry_name in feature_names:
         try:
             # Skip example features (they are just for testing)
-            if registry_name.startswith('example/'):
+            if registry_name.startswith("example/"):
                 continue
 
             # Skip indicators without category (prefer categorized versions)
             # e.g., prefer "volatility/atr" over "atr"
-            if '/' not in registry_name:
+            if "/" not in registry_name:
                 continue
 
             # Get class from registry
             class_obj = sf.default_registry.get(
-                component_type=sf.SfComponentType.FEATURE,
-                name=registry_name
+                component_type=sf.SfComponentType.FEATURE, name=registry_name
             )
 
             indicators.append((registry_name, class_obj))
@@ -68,8 +67,8 @@ def get_test_params(class_obj) -> Dict[str, Any]:
         Dictionary with parameter names and values for first test
     """
     # Try to get test_params field
-    if hasattr(class_obj, '__dataclass_fields__'):
-        test_params_field = class_obj.__dataclass_fields__.get('test_params')
+    if hasattr(class_obj, "__dataclass_fields__"):
+        test_params_field = class_obj.__dataclass_fields__.get("test_params")
         if test_params_field and test_params_field.default:
             test_params_list = test_params_field.default
             if test_params_list and len(test_params_list) > 0:
@@ -78,11 +77,19 @@ def get_test_params(class_obj) -> Dict[str, Any]:
 
     # Fallback: try to get minimal default params
     params = {}
-    if hasattr(class_obj, '__dataclass_fields__'):
+    if hasattr(class_obj, "__dataclass_fields__"):
         for field_name, field in class_obj.__dataclass_fields__.items():
             # Skip special fields
-            if field_name in ['requires', 'outputs', 'test_params', 'component_type',
-                            'group_col', 'ts_col', 'normalized', 'norm_period']:
+            if field_name in [
+                "requires",
+                "outputs",
+                "test_params",
+                "component_type",
+                "group_col",
+                "ts_col",
+                "normalized",
+                "norm_period",
+            ]:
                 continue
 
             # Get default value
@@ -103,15 +110,13 @@ def create_feature_config(registry_name: str, params: Dict[str, Any]) -> Dict:
     Returns:
         Feature configuration dict
     """
-    config = {
-        "type": registry_name,
-        **params
-    }
+    config = {"type": registry_name, **params}
     return config
 
 
-def update_parameters_file(registry_name: str, params: Dict[str, Any],
-                          output_feature_name: str) -> None:
+def update_parameters_file(
+    registry_name: str, params: Dict[str, Any], output_feature_name: str
+) -> None:
     """
     Update the feature_analysis.yml parameters file with new indicator config.
 
@@ -123,20 +128,20 @@ def update_parameters_file(registry_name: str, params: Dict[str, Any],
     params_file = Path("conf/base/parameters/feature_analysis.yml")
 
     # Read current parameters
-    with open(params_file, 'r') as f:
+    with open(params_file, "r") as f:
         config = yaml.safe_load(f)
 
     # Update feature extractors
-    config['feature_analysis']['features']['extractors'] = [
+    config["feature_analysis"]["features"]["extractors"] = [
         create_feature_config(registry_name, params)
     ]
 
     # Update analysis config with the output feature name and indicator type
-    config['feature_analysis']['analysis']['feature_name'] = output_feature_name
-    config['feature_analysis']['analysis']['indicator_type'] = registry_name
+    config["feature_analysis"]["analysis"]["feature_name"] = output_feature_name
+    config["feature_analysis"]["analysis"]["indicator_type"] = registry_name
 
     # Write back
-    with open(params_file, 'w') as f:
+    with open(params_file, "w") as f:
         yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
 
@@ -152,7 +157,7 @@ def run_feature_analysis_pipeline() -> bool:
             ["kedro", "run", "--pipeline", "feature_analysis"],
             capture_output=True,
             text=True,
-            timeout=300  # 5 minutes timeout
+            timeout=300,  # 5 minutes timeout
         )
 
         if result.returncode != 0:
@@ -185,13 +190,13 @@ def get_output_feature_name(class_obj, params: Dict[str, Any]) -> str:
     # Try to instantiate and get output name
     try:
         instance = class_obj(**params)
-        if hasattr(instance, '_get_output_name'):
+        if hasattr(instance, "_get_output_name"):
             return instance._get_output_name()
-        elif hasattr(instance, 'outputs') and instance.outputs:
+        elif hasattr(instance, "outputs") and instance.outputs:
             # For divergence indicators, prefer the strength column if available
-            if 'divergence' in class_obj.__name__.lower():
+            if "divergence" in class_obj.__name__.lower():
                 for output in instance.outputs:
-                    if 'strength' in output.lower():
+                    if "strength" in output.lower():
                         # Format with parameters
                         output_name = output
                         for key, value in params.items():
@@ -207,7 +212,16 @@ def get_output_feature_name(class_obj, params: Dict[str, Any]) -> str:
         pass
 
     # Fallback: use class name in lowercase
-    return class_obj.__name__.lower().replace('mom', '').replace('smooth', '').replace('vol', '').replace('volume', '').replace('trend', '').replace('stat', '').replace('price', '')
+    return (
+        class_obj.__name__.lower()
+        .replace("mom", "")
+        .replace("smooth", "")
+        .replace("vol", "")
+        .replace("volume", "")
+        .replace("trend", "")
+        .replace("stat", "")
+        .replace("price", "")
+    )
 
 
 def read_latest_stats() -> Dict[str, Any]:
@@ -223,14 +237,16 @@ def read_latest_stats() -> Dict[str, Any]:
         return {}
 
     try:
-        with open(stats_file, 'r') as f:
+        with open(stats_file, "r") as f:
             return json.load(f)
     except Exception as e:
         print(f"  ⚠️  Failed to read stats file: {e}")
         return {}
 
 
-def generate_consolidated_report(all_stats: List[Dict[str, Any]], output_file: Path) -> None:
+def generate_consolidated_report(
+    all_stats: List[Dict[str, Any]], output_file: Path
+) -> None:
     """
     Generate a consolidated text report for all indicators.
 
@@ -253,7 +269,7 @@ def generate_consolidated_report(all_stats: List[Dict[str, Any]], output_file: P
     lines.append("")
 
     # Get period info from first indicator (assuming all use same period)
-    if all_stats[0].get('global_stats'):
+    if all_stats[0].get("global_stats"):
         first_stats = all_stats[0]
         lines.append(f"Period: {first_stats.get('timestamp', 'N/A')}")
         lines.append("")
@@ -265,26 +281,30 @@ def generate_consolidated_report(all_stats: List[Dict[str, Any]], output_file: P
     lines.append("=" * 120)
 
     # Sort by indicator type
-    sorted_stats = sorted(all_stats, key=lambda x: x.get('indicator_type', ''))
+    sorted_stats = sorted(all_stats, key=lambda x: x.get("indicator_type", ""))
 
     # Table rows
     for stat in sorted_stats:
-        indicator = stat.get('indicator_type', 'Unknown')[:35]
-        gs = stat.get('global_stats', {})
-        mean = gs.get('mean', 0.0)
-        std = gs.get('std', 0.0)
-        skew = gs.get('skewness', 0.0)
-        kurt = gs.get('kurtosis', 0.0)
-        corr_avg = stat.get('avg_correlation')
+        indicator = stat.get("indicator_type", "Unknown")[:35]
+        gs = stat.get("global_stats", {})
+        mean = gs.get("mean", 0.0)
+        std = gs.get("std", 0.0)
+        skew = gs.get("skewness", 0.0)
+        kurt = gs.get("kurtosis", 0.0)
+        corr_avg = stat.get("avg_correlation")
         corr_str = f"{corr_avg:+.4f}" if corr_avg is not None else "N/A"
-        valid_pct = stat.get('data_quality', {}).get('avg_valid_pct', 0.0)
-        transform = "Yes" if stat.get('transform_needed', False) else "No"
+        valid_pct = stat.get("data_quality", {}).get("avg_valid_pct", 0.0)
+        transform = "Yes" if stat.get("transform_needed", False) else "No"
 
         # Add transform reason if applicable
-        if stat.get('transform_needed'):
-            reasons = stat.get('transform_reasons', [])
+        if stat.get("transform_needed"):
+            reasons = stat.get("transform_reasons", [])
             if reasons:
-                transform = f"Yes ({reasons[0][:20]}...)" if len(reasons[0]) > 20 else f"Yes ({reasons[0]})"
+                transform = (
+                    f"Yes ({reasons[0][:20]}...)"
+                    if len(reasons[0]) > 20
+                    else f"Yes ({reasons[0]})"
+                )
 
         row = f"{indicator:<35} | {mean:>10.6f} | {std:>10.6f} | {skew:>7.3f} | {kurt:>7.3f} | {corr_str:>10} | {valid_pct:>7.2f}% | {transform:<12}"
         lines.append(row)
@@ -297,17 +317,25 @@ def generate_consolidated_report(all_stats: List[Dict[str, Any]], output_file: P
     lines.append("-" * 120)
 
     # Count indicators needing transformation
-    transform_needed = sum(1 for s in all_stats if s.get('transform_needed', False))
-    lines.append(f"Indicators needing transformation: {transform_needed} / {len(all_stats)} ({transform_needed/len(all_stats)*100:.1f}%)")
+    transform_needed = sum(1 for s in all_stats if s.get("transform_needed", False))
+    lines.append(
+        f"Indicators needing transformation: {transform_needed} / {len(all_stats)} ({transform_needed / len(all_stats) * 100:.1f}%)"
+    )
 
     # Average correlation
-    all_corrs = [s.get('avg_correlation') for s in all_stats if s.get('avg_correlation') is not None]
+    all_corrs = [
+        s.get("avg_correlation")
+        for s in all_stats
+        if s.get("avg_correlation") is not None
+    ]
     if all_corrs:
         avg_all_corr = sum(all_corrs) / len(all_corrs)
         lines.append(f"Average correlation across all indicators: {avg_all_corr:+.4f}")
 
     # Average data quality
-    all_valid_pcts = [s.get('data_quality', {}).get('avg_valid_pct', 0) for s in all_stats]
+    all_valid_pcts = [
+        s.get("data_quality", {}).get("avg_valid_pct", 0) for s in all_stats
+    ]
     if all_valid_pcts:
         avg_valid = sum(all_valid_pcts) / len(all_valid_pcts)
         lines.append(f"Average data quality: {avg_valid:.2f}%")
@@ -317,7 +345,7 @@ def generate_consolidated_report(all_stats: List[Dict[str, Any]], output_file: P
 
     # Write to file
     report_text = "\n".join(lines)
-    with open(output_file, 'w') as f:
+    with open(output_file, "w") as f:
         f.write(report_text)
 
     # Also print to console
@@ -337,11 +365,7 @@ def main():
     print(f"✅ Found {len(indicators)} indicators\n")
 
     # Track results and statistics
-    results = {
-        "successful": [],
-        "failed": [],
-        "skipped": []
-    }
+    results = {"successful": [], "failed": [], "skipped": []}
     all_stats = []  # Collect statistics for consolidated report
 
     # Process each indicator
@@ -370,11 +394,9 @@ def main():
 
             if success:
                 print(f"  ✅ Success! (took {elapsed:.1f}s)")
-                results["successful"].append({
-                    "registry_name": registry_name,
-                    "params": params,
-                    "time": elapsed
-                })
+                results["successful"].append(
+                    {"registry_name": registry_name, "params": params, "time": elapsed}
+                )
 
                 # Read and collect statistics
                 stats = read_latest_stats()
@@ -383,17 +405,13 @@ def main():
                     print(f"  📊 Statistics collected")
             else:
                 print(f"  ❌ Failed!")
-                results["failed"].append({
-                    "registry_name": registry_name,
-                    "params": params
-                })
+                results["failed"].append(
+                    {"registry_name": registry_name, "params": params}
+                )
 
         except Exception as e:
             print(f"  ❌ Error: {e}")
-            results["failed"].append({
-                "registry_name": registry_name,
-                "error": str(e)
-            })
+            results["failed"].append({"registry_name": registry_name, "error": str(e)})
 
     # Print summary
     print("\n" + "=" * 80)
@@ -404,27 +422,31 @@ def main():
     print(f"⏭️  Skipped: {len(results['skipped'])}")
     print()
 
-    if results['successful']:
+    if results["successful"]:
         print("Successful indicators:")
-        for item in results['successful']:
+        for item in results["successful"]:
             print(f"  • {item['registry_name']} - {item['time']:.1f}s")
 
-    if results['failed']:
+    if results["failed"]:
         print("\nFailed indicators:")
-        for item in results['failed']:
+        for item in results["failed"]:
             print(f"  • {item['registry_name']}")
-            if 'error' in item:
+            if "error" in item:
                 print(f"    Error: {item['error']}")
 
     # Save results to file
-    results_file = Path(f"indicator_analysis_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.yaml")
-    with open(results_file, 'w') as f:
+    results_file = Path(
+        f"indicator_analysis_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.yaml"
+    )
+    with open(results_file, "w") as f:
         yaml.dump(results, f, default_flow_style=False)
     print(f"\n💾 Results saved to: {results_file}")
 
     # Generate consolidated statistics report
     if all_stats:
-        report_file = Path(f"indicator_analysis_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
+        report_file = Path(
+            f"indicator_analysis_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        )
         print(f"\n📊 Generating consolidated report...")
         generate_consolidated_report(all_stats, report_file)
         print(f"💾 Consolidated report saved to: {report_file}")
@@ -434,7 +456,7 @@ def main():
     print("=" * 80)
 
     # Exit with appropriate code
-    sys.exit(0 if not results['failed'] else 1)
+    sys.exit(0 if not results["failed"] else 1)
 
 
 if __name__ == "__main__":

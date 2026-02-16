@@ -55,98 +55,99 @@ def create_pipeline(**kwargs) -> Pipeline:
     Returns:
         Kedro Pipeline for walk-forward validation
     """
-    base_pipeline = pipeline([
-        # Data preparation
-        node(
-            func=download_market_data,
-            inputs=[
-                "params:walk_forward.data.store",
-                "params:walk_forward.data.loader",
-                "params:walk_forward.data.period",
-                "params:walk_forward.data.pairs",
-            ],
-            outputs="wf_store_path",
-            name="download_market_data",
-            tags=["data_download", "preparation"],
-        ),
-        node(
-            func=load_raw_data_from_storage,
-            inputs=[
-                "params:walk_forward.data.store",
-                "params:walk_forward.data.period",
-                "params:walk_forward.data.pairs",
-                "wf_store_path",
-            ],
-            outputs="wf_raw_data",
-            name="load_raw_data_node",
-            tags=["preparation"],
-        ),
-        node(
-            func=detect_signals,
-            inputs=["wf_raw_data", "params:walk_forward.detector"],
-            outputs="wf_signals",
-            name="detect_signals_node",
-            tags=["preparation"],
-        ),
-        node(
-            func=extract_validation_features,
-            inputs=[
-                "wf_raw_data",
-                "wf_signals",
-                "params:walk_forward.features",
-            ],
-            outputs="wf_features",
-            name="extract_features_node",
-            tags=["preparation", "features"],
-        ),
-        node(
-            func=create_labels,
-            inputs=[
-                "wf_raw_data",
-                "wf_signals",
-                "params:walk_forward.labeling",
-            ],
-            outputs="wf_labels",
-            name="create_labels_node",
-            tags=["preparation"],
-        ),
-
-        # Walk-forward specific nodes
-        node(
-            func=create_walk_forward_windows,
-            inputs=[
-                "wf_raw_data",
-                "params:walk_forward.windows",
-            ],
-            outputs="wf_windows",
-            name="create_windows_node",
-            tags=["walk_forward", "setup"],
-        ),
-        node(
-            func=run_walk_forward_validation,
-            inputs=[
-                "wf_raw_data",
-                "wf_signals",
-                "wf_features",
-                "wf_labels",
-                "wf_windows",
-                "params:walk_forward.validation",
-            ],
-            outputs="wf_result",
-            name="run_walk_forward_node",
-            tags=["walk_forward", "validation"],
-        ),
-        node(
-            func=save_walk_forward_results,
-            inputs=[
-                "wf_result",
-                "params:walk_forward.output_dir",
-            ],
-            outputs="wf_output_path",
-            name="save_results_node",
-            tags=["walk_forward", "reporting"],
-        ),
-    ])
+    base_pipeline = pipeline(
+        [
+            # Data preparation
+            node(
+                func=download_market_data,
+                inputs=[
+                    "params:walk_forward.data.store",
+                    "params:walk_forward.data.loader",
+                    "params:walk_forward.data.period",
+                    "params:walk_forward.data.pairs",
+                ],
+                outputs="wf_store_path",
+                name="download_market_data",
+                tags=["data_download", "preparation"],
+            ),
+            node(
+                func=load_raw_data_from_storage,
+                inputs=[
+                    "params:walk_forward.data.store",
+                    "params:walk_forward.data.period",
+                    "params:walk_forward.data.pairs",
+                    "wf_store_path",
+                ],
+                outputs="wf_raw_data",
+                name="load_raw_data_node",
+                tags=["preparation"],
+            ),
+            node(
+                func=detect_signals,
+                inputs=["wf_raw_data", "params:walk_forward.detector"],
+                outputs="wf_signals",
+                name="detect_signals_node",
+                tags=["preparation"],
+            ),
+            node(
+                func=extract_validation_features,
+                inputs=[
+                    "wf_raw_data",
+                    "wf_signals",
+                    "params:walk_forward.features",
+                ],
+                outputs="wf_features",
+                name="extract_features_node",
+                tags=["preparation", "features"],
+            ),
+            node(
+                func=create_labels,
+                inputs=[
+                    "wf_raw_data",
+                    "wf_signals",
+                    "params:walk_forward.labeling",
+                ],
+                outputs="wf_labels",
+                name="create_labels_node",
+                tags=["preparation"],
+            ),
+            # Walk-forward specific nodes
+            node(
+                func=create_walk_forward_windows,
+                inputs=[
+                    "wf_raw_data",
+                    "params:walk_forward.windows",
+                ],
+                outputs="wf_windows",
+                name="create_windows_node",
+                tags=["walk_forward", "setup"],
+            ),
+            node(
+                func=run_walk_forward_validation,
+                inputs=[
+                    "wf_raw_data",
+                    "wf_signals",
+                    "wf_features",
+                    "wf_labels",
+                    "wf_windows",
+                    "params:walk_forward.validation",
+                ],
+                outputs="wf_result",
+                name="run_walk_forward_node",
+                tags=["walk_forward", "validation"],
+            ),
+            node(
+                func=save_walk_forward_results,
+                inputs=[
+                    "wf_result",
+                    "params:walk_forward.output_dir",
+                ],
+                outputs="wf_output_path",
+                name="save_results_node",
+                tags=["walk_forward", "reporting"],
+            ),
+        ]
+    )
 
     return pipeline(
         base_pipeline,

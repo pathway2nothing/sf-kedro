@@ -8,6 +8,7 @@ except ImportError:
             "Install it with: pip install pyTelegramBotAPI"
         )
 
+
 __all__ = [
     "send_plots_to_telegram",
 ]

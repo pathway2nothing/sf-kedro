@@ -1,4 +1,3 @@
-"""SF Kedro
-"""
+"""SF Kedro"""
 
 __version__ = "0.5.0"

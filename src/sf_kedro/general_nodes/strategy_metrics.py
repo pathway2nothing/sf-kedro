@@ -13,55 +13,56 @@ from sf_kedro.custom_modules.strategy_metrics import *
 from sf_kedro.utils.telegram import send_plots_to_telegram
 
 
-
 def log_last_state_metrics(backtest_results: Dict) -> Dict:
     """
     Calculate and log backtest metrics.
-    
+
     Args:
         backtest_results: Results from run_backtest
-        
+
     Returns:
         Dictionary of metrics
     """
     metrics = {
-        "final_return": backtest_results.get('final_return', 0),
-        "max_drawdown": backtest_results.get('max_drawdown', 0),
-        "sharpe_ratio": backtest_results.get('sharpe_ratio', 0),
-        "win_rate": backtest_results.get('win_rate', 0),
-        "total_trades": backtest_results.get('total_trades', 0),
-        "final_equity": backtest_results.get('final_equity', 0),
+        "final_return": backtest_results.get("final_return", 0),
+        "max_drawdown": backtest_results.get("max_drawdown", 0),
+        "sharpe_ratio": backtest_results.get("sharpe_ratio", 0),
+        "win_rate": backtest_results.get("win_rate", 0),
+        "total_trades": backtest_results.get("total_trades", 0),
+        "final_equity": backtest_results.get("final_equity", 0),
     }
-    
-    mlflow.log_metrics({
-        "backtest.return": metrics["final_return"],
-        "backtest.max_drawdown": metrics["max_drawdown"],
-        "backtest.sharpe": metrics["sharpe_ratio"],
-        "backtest.win_rate": metrics["win_rate"],
-        "backtest.total_trades": metrics["total_trades"],
-        "backtest.final_equity": metrics["final_equity"],
-    })
-    
-    metrics_df = backtest_results.get('metrics_df')
+
+    mlflow.log_metrics(
+        {
+            "backtest.return": metrics["final_return"],
+            "backtest.max_drawdown": metrics["max_drawdown"],
+            "backtest.sharpe": metrics["sharpe_ratio"],
+            "backtest.win_rate": metrics["win_rate"],
+            "backtest.total_trades": metrics["total_trades"],
+            "backtest.final_equity": metrics["final_equity"],
+        }
+    )
+
+    metrics_df = backtest_results.get("metrics_df")
     if metrics_df is not None:
         output_path = Path("data/07_model_output/backtest/equity_curve.csv")
         output_path.parent.mkdir(parents=True, exist_ok=True)
         metrics_df.write_csv(output_path)
         mlflow.log_artifact(str(output_path), artifact_path="backtest")
-    
-    trades_df = backtest_results.get('trades_df')
+
+    trades_df = backtest_results.get("trades_df")
     if trades_df is not None:
         output_path = Path("data/07_model_output/backtest/trades.parquet")
         output_path.parent.mkdir(parents=True, exist_ok=True)
         trades_df.write_parquet(output_path)
         mlflow.log_artifact(str(output_path), artifact_path="backtest")
-    
+
     return metrics
 
 
 def compute_strategy_metrics(
     backtest_results: Dict[str, Any],
-    params: Dict[str, Dict[str, Any]],    
+    params: Dict[str, Dict[str, Any]],
     telegram_config: Dict[str, Any] | None = None,
     strategy_name: Optional[str] = None,
     raw_data: Optional[RawData] = None,
@@ -118,10 +119,11 @@ def compute_strategy_metrics(
     else:
         logger.debug("No active MLflow run, skipping MLflow logging")
 
-
     if telegram_config and telegram_config.get("enabled", False):
         try:
-            full_header = f"Strategy: {strategy_name}" if strategy_name else "Strategy Metrics"
+            full_header = (
+                f"Strategy: {strategy_name}" if strategy_name else "Strategy Metrics"
+            )
             send_plots_to_telegram(
                 plots=plots,
                 bot_token=telegram_config.get("bot_token"),
@@ -135,8 +137,9 @@ def compute_strategy_metrics(
             if telegram_config.get("raise_on_error", False):
                 raise
 
-
-    logger.info(f"Successfully computed {len(results.get('per_metric', {}))} strategy metric types")
+    logger.info(
+        f"Successfully computed {len(results.get('per_metric', {}))} strategy metric types"
+    )
     return results, plots
 
 
@@ -179,13 +182,12 @@ def save_strategy_plots(
     logger.info(f"Total saved {total_saved} plots to {output_path}")
 
 
-
-
 def _build_strategy_summary(backtest_results: Dict[str, Any]) -> Dict[str, Any]:
     """
     Try to extract standard scalars from backtest_results.
     Keep it tolerant to missing keys.
     """
+
     def _sf(x: Any, default: float = 0.0) -> float:
         try:
             return float(x)
@@ -238,7 +240,9 @@ def _log_metrics_to_mlflow(
                 html_path = metric_dir / f"{i}.html"
                 fig.write_html(str(html_path))
 
-            mlflow.log_artifacts(str(metric_dir), artifact_path=f"{artifact_root}/{metric_name}")
+            mlflow.log_artifacts(
+                str(metric_dir), artifact_path=f"{artifact_root}/{metric_name}"
+            )
 
 
 def _log_dict_metrics(prefix: str, obj: Any) -> None:

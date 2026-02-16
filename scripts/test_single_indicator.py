@@ -15,7 +15,7 @@ from run_all_indicators import (
     get_test_params,
     get_output_feature_name,
     update_parameters_file,
-    run_feature_analysis_pipeline
+    run_feature_analysis_pipeline,
 )
 
 
@@ -57,7 +57,7 @@ def main():
     params_file = Path("conf/base/parameters/feature_analysis.yml")
     print(f"\n📄 Updated config file ({params_file}):")
     print("-" * 80)
-    with open(params_file, 'r') as f:
+    with open(params_file, "r") as f:
         print(f.read())
     print("-" * 80)
 

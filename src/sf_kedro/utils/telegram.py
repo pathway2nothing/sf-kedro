@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 try:
     import telebot
     from telebot.types import InputMediaPhoto
+
     TELEBOT_AVAILABLE = True
 except ImportError:
     TELEBOT_AVAILABLE = False
@@ -50,19 +51,15 @@ class TelegramNotifier:
 
         self.bot = telebot.TeleBot(self.bot_token)
         logger.info(f"Telegram bot initialized for chat: {self.chat_id}")
-    
+
     def send_message(self, text: str) -> None:
         """Send text message to channel."""
         try:
-            self.bot.send_message(
-                chat_id=self.chat_id,
-                text=text,
-                parse_mode="HTML"
-            )
+            self.bot.send_message(chat_id=self.chat_id, text=text, parse_mode="HTML")
             logger.info(f"Sent message to Telegram: {text[:50]}...")
         except Exception as e:
             logger.error(f"Failed to send Telegram message: {e}")
-    
+
     def send_plot(
         self,
         fig: go.Figure,
@@ -74,19 +71,21 @@ class TelegramNotifier:
         try:
             # Save to BytesIO instead of temp file
             img_bytes = BytesIO()
-            fig.write_image(img_bytes, format='png', width=width, height=height, scale=2)
+            fig.write_image(
+                img_bytes, format="png", width=width, height=height, scale=2
+            )
             img_bytes.seek(0)
-            
+
             self.bot.send_photo(
                 chat_id=self.chat_id,
                 photo=img_bytes,
                 caption=caption,
-                parse_mode="HTML"
+                parse_mode="HTML",
             )
             logger.info(f"Sent plot to Telegram: {caption or 'no caption'}")
         except Exception as e:
             logger.error(f"Failed to send plot: {e}")
-    
+
     def send_plots_group(
         self,
         figures: List[go.Figure],
@@ -97,9 +96,9 @@ class TelegramNotifier:
     ) -> None:
         """
         Send multiple plots as media group (album).
-        
+
         Telegram limits media groups to 10 items, so we split if needed.
-        
+
         Args:
             figures: List of plotly figures
             metric_name: Name of metric for caption
@@ -110,28 +109,24 @@ class TelegramNotifier:
         if not figures:
             logger.warning(f"No figures to send for {metric_name}")
             return
-        
+
         # Split into chunks if more than max_per_group
         total_chunks = (len(figures) + max_per_group - 1) // max_per_group
-        
+
         for chunk_idx, start_idx in enumerate(range(0, len(figures), max_per_group)):
-            chunk = figures[start_idx:start_idx + max_per_group]
-            
+            chunk = figures[start_idx : start_idx + max_per_group]
+
             media_group = []
-            
+
             try:
                 # Create media group
                 for i, fig in enumerate(chunk):
                     img_bytes = BytesIO()
                     fig.write_image(
-                        img_bytes,
-                        format='png',
-                        width=width,
-                        height=height,
-                        scale=2
+                        img_bytes, format="png", width=width, height=height, scale=2
                     )
                     img_bytes.seek(0)
-                    
+
                     # First image gets caption
                     caption = None
                     if i == 0:
@@ -142,26 +137,21 @@ class TelegramNotifier:
                             )
                         else:
                             caption = f"<b>{metric_name}</b>"
-                    
+
                     media_group.append(
                         InputMediaPhoto(
-                            media=img_bytes,
-                            caption=caption,
-                            parse_mode="HTML"
+                            media=img_bytes, caption=caption, parse_mode="HTML"
                         )
                     )
-                
+
                 # Send media group
-                self.bot.send_media_group(
-                    chat_id=self.chat_id,
-                    media=media_group
-                )
-                
+                self.bot.send_media_group(chat_id=self.chat_id, media=media_group)
+
                 logger.info(
                     f"Sent {len(chunk)} plots for {metric_name} "
                     f"(part {chunk_idx + 1}/{total_chunks})"
                 )
-                
+
             except Exception as e:
                 logger.error(f"Failed to send media group for {metric_name}: {e}")
                 # Fallback: send individually
@@ -172,7 +162,7 @@ class TelegramNotifier:
                         self.send_plot(fig, caption=caption, width=width, height=height)
                     except Exception as inner_e:
                         logger.error(f"Failed to send individual plot {i}: {inner_e}")
-    
+
     def send_all_metrics_plots(
         self,
         plots: Dict[str, List[go.Figure] | go.Figure],
@@ -182,7 +172,7 @@ class TelegramNotifier:
     ) -> None:
         """
         Send all metric plots to Telegram, grouped by metric.
-        
+
         Args:
             plots: Dict mapping metric names to figures
             header_message: Optional header message to send first
@@ -191,39 +181,38 @@ class TelegramNotifier:
         """
         if header_message:
             self.send_message(header_message)
-        
+
         total_metrics = len(plots)
         for idx, (metric_name, figures) in enumerate(plots.items(), 1):
             if figures is None:
                 logger.warning(f"Skipping {metric_name}: no figures")
                 continue
-            
+
             # Normalize to list
             if not isinstance(figures, list):
                 figures = [figures]
-            
+
             if len(figures) == 0:
                 logger.warning(f"Skipping {metric_name}: empty list")
                 continue
-            
-            logger.info(f"Sending metric {idx}/{total_metrics}: {metric_name} ({len(figures)} plots)")
-            
+
+            logger.info(
+                f"Sending metric {idx}/{total_metrics}: {metric_name} ({len(figures)} plots)"
+            )
+
             # Send as group if multiple plots, single if just one
             if len(figures) == 1:
                 self.send_plot(
                     fig=figures[0],
                     caption=f"<b>{metric_name}</b>",
                     width=width,
-                    height=height
+                    height=height,
                 )
             else:
                 self.send_plots_group(
-                    figures=figures,
-                    metric_name=metric_name,
-                    width=width,
-                    height=height
+                    figures=figures, metric_name=metric_name, width=width, height=height
                 )
-        
+
         logger.info(f"Completed sending {total_metrics} metrics to Telegram")
 
 
@@ -237,7 +226,7 @@ def send_plots_to_telegram(
 ) -> None:
     """
     Synchronous function for sending plots to Telegram.
-    
+
     Args:
         plots: Dictionary with {metric_name: [figures]}
         bot_token: Telegram bot token (or set TELEGRAM_BOT_TOKEN env var)
@@ -252,7 +241,7 @@ def send_plots_to_telegram(
             plots=plots,
             header_message=header_message,
             width=image_width,
-            height=image_height
+            height=image_height,
         )
         logger.info("Successfully sent all plots to Telegram")
     except Exception as e:

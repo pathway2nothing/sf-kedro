@@ -14,11 +14,9 @@ class StrategyMainResult(sf.analytic.StrategyMetric):
     Strategy-level visualization based on results['metrics_df'] (Polars DataFrame).
 
     """
+
     def compute(
-        self,
-        state: StrategyState,
-        prices: dict[str, float], 
-        **kwargs
+        self, state: StrategyState, prices: dict[str, float], **kwargs
     ) -> Dict[str, float]:
         """Compute metric values."""
         return {}
@@ -35,10 +33,12 @@ class StrategyMainResult(sf.analytic.StrategyMetric):
             logger.warning("No metrics_df to plot")
             return None
 
-        ts = metrics_df.to_pandas()['timestamp'].to_list()
+        ts = metrics_df.to_pandas()["timestamp"].to_list()
 
         main_fig = self._plot_main(metrics_df=metrics_df, ts=ts, results=results)
-        detailed_fig = self._plot_detailed(metrics_df=metrics_df, ts=ts, results=results)
+        detailed_fig = self._plot_detailed(
+            metrics_df=metrics_df, ts=ts, results=results
+        )
 
         # повертаємо список, щоб ти міг зберегти/показати обидва
         figs: list[go.Figure] = [main_fig]
@@ -46,12 +46,19 @@ class StrategyMainResult(sf.analytic.StrategyMetric):
             figs.append(detailed_fig)
         return figs
 
-    def _plot_main(self, *, metrics_df: pl.DataFrame, ts: list, results: dict) -> go.Figure:
+    def _plot_main(
+        self, *, metrics_df: pl.DataFrame, ts: list, results: dict
+    ) -> go.Figure:
         fig = make_subplots(
-            rows=3, cols=1,
+            rows=3,
+            cols=1,
             shared_xaxes=True,
             vertical_spacing=0.06,
-            subplot_titles=("Strategy Performance", "Position Metrics", "Balance Allocation"),
+            subplot_titles=(
+                "Strategy Performance",
+                "Position Metrics",
+                "Balance Allocation",
+            ),
             row_heights=[0.45, 0.30, 0.25],
         )
 
@@ -60,11 +67,14 @@ class StrategyMainResult(sf.analytic.StrategyMetric):
             returns_pct = (metrics_df.get_column("total_return") * 100).to_list()
             fig.add_trace(
                 go.Scatter(
-                    x=ts, y=returns_pct, mode="lines",
+                    x=ts,
+                    y=returns_pct,
+                    mode="lines",
                     name="Strategy Return",
                     hovertemplate="Return: %{y:.2f}%<extra></extra>",
                 ),
-                row=1, col=1,
+                row=1,
+                col=1,
             )
 
         fig.add_hline(y=0, line_dash="dash", line_width=1, row=1, col=1)
@@ -80,7 +90,8 @@ class StrategyMainResult(sf.analytic.StrategyMetric):
                     fill="tozeroy",
                     hovertemplate="Open: %{y}<extra></extra>",
                 ),
-                row=2, col=1,
+                row=2,
+                col=1,
             )
 
         if "closed_positions" in metrics_df.columns:
@@ -93,52 +104,68 @@ class StrategyMainResult(sf.analytic.StrategyMetric):
                     line=dict(dash="dot"),
                     hovertemplate="Closed: %{y}<extra></extra>",
                 ),
-                row=2, col=1,
+                row=2,
+                col=1,
             )
 
         # Allocation + Total Return overlay
         if "cash" in metrics_df.columns and "equity" in metrics_df.columns:
             cash = metrics_df.get_column("cash").to_list()
             equity = metrics_df.get_column("equity").to_list()
-            initial_capital = results.get("initial_capital", equity[0] if equity else 10000)
+            initial_capital = results.get(
+                "initial_capital", equity[0] if equity else 10000
+            )
 
-            allocated_pct = [(eq - c) / eq if eq > 0 else 0.0 for eq, c in zip(equity, cash)]
+            allocated_pct = [
+                (eq - c) / eq if eq > 0 else 0.0 for eq, c in zip(equity, cash)
+            ]
             free_pct = [c / eq if eq > 0 else 0.0 for eq, c in zip(equity, cash)]
             total_balance_pct = [(eq / initial_capital - 1.0) * 100.0 for eq in equity]
 
             fig.add_trace(
                 go.Scatter(
-                    x=ts, y=free_pct,
-                    mode="lines", name="Free Cash",
+                    x=ts,
+                    y=free_pct,
+                    mode="lines",
+                    name="Free Cash",
                     line=dict(width=0),
                     fill="tozeroy",
                     stackgroup="balance",
                     hovertemplate="Free: %{y:.1%}<extra></extra>",
                 ),
-                row=3, col=1,
+                row=3,
+                col=1,
             )
             fig.add_trace(
                 go.Scatter(
-                    x=ts, y=allocated_pct,
-                    mode="lines", name="In Positions",
+                    x=ts,
+                    y=allocated_pct,
+                    mode="lines",
+                    name="In Positions",
                     line=dict(width=0),
                     fill="tonexty",
                     stackgroup="balance",
                     hovertemplate="Allocated: %{y:.1%}<extra></extra>",
                 ),
-                row=3, col=1,
+                row=3,
+                col=1,
             )
             fig.add_trace(
                 go.Scatter(
-                    x=ts, y=total_balance_pct,
-                    mode="lines", name="Total Return",
+                    x=ts,
+                    y=total_balance_pct,
+                    mode="lines",
+                    name="Total Return",
                     yaxis="y4",
                     hovertemplate="Total: %{y:.2f}%<extra></extra>",
                 ),
-                row=3, col=1,
+                row=3,
+                col=1,
             )
 
-            fig.update_yaxes(title_text="Allocation", row=3, col=1, tickformat=".0%", range=[0, 1])
+            fig.update_yaxes(
+                title_text="Allocation", row=3, col=1, tickformat=".0%", range=[0, 1]
+            )
             fig.update_layout(
                 yaxis4=dict(
                     title="Total Return (%)",
@@ -162,7 +189,9 @@ class StrategyMainResult(sf.analytic.StrategyMetric):
         fig.update_yaxes(title_text="Count", row=2, col=1)
         return fig
 
-    def _plot_detailed(self, *, metrics_df: pl.DataFrame, ts: list, results: dict) -> go.Figure | None:
+    def _plot_detailed(
+        self, *, metrics_df: pl.DataFrame, ts: list, results: dict
+    ) -> go.Figure | None:
         # робимо тільки якщо є релевантні колонки
         has_dd = "current_drawdown" in metrics_df.columns
         has_util = "capital_utilization" in metrics_df.columns
@@ -170,7 +199,8 @@ class StrategyMainResult(sf.analytic.StrategyMetric):
             return None
 
         fig = make_subplots(
-            rows=2, cols=1,
+            rows=2,
+            cols=1,
             shared_xaxes=True,
             vertical_spacing=0.08,
             subplot_titles=("Drawdown Analysis", "Capital Utilization"),
@@ -182,12 +212,15 @@ class StrategyMainResult(sf.analytic.StrategyMetric):
             drawdown_pct = [-d * 100 for d in drawdown]
             fig.add_trace(
                 go.Scatter(
-                    x=ts, y=drawdown_pct, mode="lines",
+                    x=ts,
+                    y=drawdown_pct,
+                    mode="lines",
                     name="Drawdown",
                     fill="tozeroy",
                     hovertemplate="DD: %{y:.2f}%<extra></extra>",
                 ),
-                row=1, col=1,
+                row=1,
+                col=1,
             )
 
             max_dd = results.get("max_drawdown", 0.0) * 100.0
@@ -198,7 +231,8 @@ class StrategyMainResult(sf.analytic.StrategyMetric):
                     line_width=1.5,
                     annotation_text=f"Max DD: {max_dd:.2f}%",
                     annotation_position="right",
-                    row=1, col=1,
+                    row=1,
+                    col=1,
                 )
 
         if has_util:
@@ -206,12 +240,15 @@ class StrategyMainResult(sf.analytic.StrategyMetric):
             util_pct = [u * 100 for u in util]
             fig.add_trace(
                 go.Scatter(
-                    x=ts, y=util_pct, mode="lines",
+                    x=ts,
+                    y=util_pct,
+                    mode="lines",
                     name="Capital Utilization",
                     fill="tozeroy",
                     hovertemplate="Util: %{y:.1f}%<extra></extra>",
                 ),
-                row=2, col=1,
+                row=2,
+                col=1,
             )
             fig.add_hline(y=100, line_dash="dot", line_width=1, row=2, col=1)
 
@@ -225,8 +262,6 @@ class StrategyMainResult(sf.analytic.StrategyMetric):
         fig.update_yaxes(title_text="Utilization (%)", row=2, col=1)
         fig.update_xaxes(title_text="Date", row=2, col=1)
         return fig
-
-
 
 
 from dataclasses import dataclass, field
@@ -258,7 +293,7 @@ class StrategyPairResult(StrategyMetric):
 
     pairs: List[str] = field(default_factory=list)
     price_col: str = "close"
-    ts_col: str = "timestamp" 
+    ts_col: str = "timestamp"
     pair_col: str = "pair"
 
     trade_id_col: str = "id"
@@ -270,7 +305,9 @@ class StrategyPairResult(StrategyMetric):
     template: str = "plotly_white"
     hovermode: str = "x unified"
 
-    def compute(self, state: StrategyState, prices: dict[str, float], **kwargs) -> Dict[str, float]:
+    def compute(
+        self, state: StrategyState, prices: dict[str, float], **kwargs
+    ) -> Dict[str, float]:
         return {}
 
     def plot(
@@ -308,10 +345,14 @@ class StrategyPairResult(StrategyMetric):
             return None
 
         if self.ts_col not in df.columns:
-            logger.warning(f"StrategyPairResult: ts_col='{self.ts_col}' not found for pair={pair}")
+            logger.warning(
+                f"StrategyPairResult: ts_col='{self.ts_col}' not found for pair={pair}"
+            )
             return None
         if self.price_col not in df.columns:
-            logger.warning(f"StrategyPairResult: price_col='{self.price_col}' not found for pair={pair}")
+            logger.warning(
+                f"StrategyPairResult: price_col='{self.price_col}' not found for pair={pair}"
+            )
             return None
 
         ts_dt, ts_s, price = self._normalize_timeseries(df=df)
@@ -364,7 +405,9 @@ class StrategyPairResult(StrategyMetric):
                 if p0 is not None:
                     entry_x.append(x0)
                     entry_y.append(p0)
-                    entry_cd.append([tid, size, dt.datetime.utcfromtimestamp(et).isoformat()])
+                    entry_cd.append(
+                        [tid, size, dt.datetime.utcfromtimestamp(et).isoformat()]
+                    )
 
                 deltas[et] = deltas.get(et, 0.0) + size
 
@@ -374,7 +417,9 @@ class StrategyPairResult(StrategyMetric):
                 if p1 is not None:
                     exit_x.append(x1)
                     exit_y.append(p1)
-                    exit_cd.append([tid, size, dt.datetime.utcfromtimestamp(xt).isoformat()])
+                    exit_cd.append(
+                        [tid, size, dt.datetime.utcfromtimestamp(xt).isoformat()]
+                    )
 
                 deltas[xt] = deltas.get(xt, 0.0) - size
 
@@ -469,8 +514,9 @@ class StrategyPairResult(StrategyMetric):
 
         return self._finalize_fig(fig)
 
-
-    def _get_pair_df(self, *, raw_data: RawData | None, pair: str) -> pl.DataFrame | None:
+    def _get_pair_df(
+        self, *, raw_data: RawData | None, pair: str
+    ) -> pl.DataFrame | None:
         if raw_data is None:
             return None
         spot = raw_data.get("spot")
@@ -480,7 +526,9 @@ class StrategyPairResult(StrategyMetric):
             return spot
         return spot.filter(pl.col(self.pair_col) == pair)
 
-    def _normalize_timeseries(self, *, df: pl.DataFrame) -> tuple[list[dt.datetime], list[int], list[float]]:
+    def _normalize_timeseries(
+        self, *, df: pl.DataFrame
+    ) -> tuple[list[dt.datetime], list[int], list[float]]:
         """
         Returns:
           - ts_dt: list[datetime] (UTC)
@@ -508,7 +556,9 @@ class StrategyPairResult(StrategyMetric):
 
         return ts_dt_list, [int(t) for t in ts_s_list], [float(p) for p in price_list]
 
-    def _extract_trades(self, *, state: StrategyState, pair: str) -> list[dict[str, Any]]:
+    def _extract_trades(
+        self, *, state: StrategyState, pair: str
+    ) -> list[dict[str, Any]]:
         """
         Must return trades with UNIQUE entry ids.
         Exit timestamps may coincide for multiple trades.
@@ -529,7 +579,11 @@ class StrategyPairResult(StrategyMetric):
             pid = getattr(p, "id", None)
 
             entry_time = getattr(p, "entry_time", None)
-            exit_time = getattr(p, "last_time", None) if getattr(p, "is_closed", False) else None
+            exit_time = (
+                getattr(p, "last_time", None)
+                if getattr(p, "is_closed", False)
+                else None
+            )
 
             entry_ts = self._to_epoch(entry_time)
             exit_ts = self._to_epoch(exit_time)
@@ -551,7 +605,9 @@ class StrategyPairResult(StrategyMetric):
 
         return out
 
-    def _nearest_price(self, *, epoch_s: int, ts_s: list[int], price: list[float]) -> Optional[float]:
+    def _nearest_price(
+        self, *, epoch_s: int, ts_s: list[int], price: list[float]
+    ) -> Optional[float]:
         if epoch_s is None or not ts_s:
             return None
         i = bisect.bisect_left(ts_s, int(epoch_s))

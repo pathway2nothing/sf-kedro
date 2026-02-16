@@ -9,15 +9,15 @@ from sf_kedro.general_nodes import (
     compute_signal_metrics,
     save_signal_plots,
     run_backtest,
-    log_last_state_metrics, 
+    log_last_state_metrics,
     save_strategy_plots,
-    compute_strategy_metrics
+    compute_strategy_metrics,
 )
 
 
 def create_pipeline(**kwargs) -> Pipeline:
     base_pipeline = pipeline(
-        [        
+        [
             node(
                 func=download_market_data,
                 inputs=[
@@ -34,9 +34,9 @@ def create_pipeline(**kwargs) -> Pipeline:
                 func=load_raw_data_from_storage,
                 inputs=[
                     "params:baseline.data.store",
-                    "params:baseline.data.period", 
+                    "params:baseline.data.period",
                     "params:baseline.data.pairs",
-                    "base_store_path"
+                    "base_store_path",
                 ],
                 outputs="base_raw_data",
                 name="load_raw_data_node",
@@ -77,11 +77,7 @@ def create_pipeline(**kwargs) -> Pipeline:
             ),
             node(
                 func=run_backtest,
-                inputs=[
-                    "base_raw_data", 
-                    "base_signals", 
-                    "params:baseline.strategy"
-                ],
+                inputs=["base_raw_data", "base_signals", "params:baseline.strategy"],
                 outputs=["base_backtest_results", "base_backtest_state"],
                 name="run_backtest",
                 tags=["backtesting"],
@@ -103,7 +99,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                     "raw_data": "base_raw_data",
                     "state": "base_backtest_state",
                 },
-                outputs=["base_strategy_metrics_results", "base_strategy_plots"], 
+                outputs=["base_strategy_metrics_results", "base_strategy_plots"],
                 name="compute_strategy_metrics",
                 tags=["metrics", "strategy_metrics"],
             ),
@@ -111,7 +107,7 @@ def create_pipeline(**kwargs) -> Pipeline:
                 func=save_strategy_plots,
                 inputs={
                     "plots": "base_strategy_plots",
-                    "output_dir": "params:baseline.strategy_plots_output_dir"
+                    "output_dir": "params:baseline.strategy_plots_output_dir",
                 },
                 outputs=None,
                 name="save_strategy_plots",
@@ -134,8 +130,8 @@ def create_pipeline(**kwargs) -> Pipeline:
             "params:baseline.signal_plots_output_dir",
             "params:baseline.strategy",
             "params:baseline.strategy_metrics",
-            "params:baseline.strategy_plots_output_dir",          
+            "params:baseline.strategy_plots_output_dir",
             "params:telegram",
             "params:strategy_name",
-        }
+        },
     )

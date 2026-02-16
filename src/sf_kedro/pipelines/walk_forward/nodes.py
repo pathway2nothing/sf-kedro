@@ -83,15 +83,19 @@ class WalkForwardResult:
             else:
                 lines.append(f"  {metric}: {value}")
 
-        lines.extend([
-            "",
-            "Per-Window Results:",
-        ])
+        lines.extend(
+            [
+                "",
+                "Per-Window Results:",
+            ]
+        )
 
         for i, result in enumerate(self.window_results):
-            lines.append(f"  Window {i+1}: Sharpe={result.get('sharpe', 0):.3f}, "
-                        f"Return={result.get('total_return', 0):.2%}, "
-                        f"Trades={result.get('n_trades', 0)}")
+            lines.append(
+                f"  Window {i + 1}: Sharpe={result.get('sharpe', 0):.3f}, "
+                f"Return={result.get('total_return', 0):.2%}, "
+                f"Trades={result.get('n_trades', 0)}"
+            )
 
         return "\n".join(lines)
 
@@ -144,13 +148,15 @@ def create_walk_forward_windows(
         if n_windows is not None and window_id >= n_windows:
             break
 
-        windows.append(WalkForwardWindow(
-            window_id=window_id,
-            train_start=train_start,
-            train_end=train_end,
-            test_start=test_start,
-            test_end=test_end,
-        ))
+        windows.append(
+            WalkForwardWindow(
+                window_id=window_id,
+                train_start=train_start,
+                train_end=train_end,
+                test_start=test_start,
+                test_end=test_end,
+            )
+        )
 
         window_id += 1
         train_start = train_start + step_size
@@ -158,12 +164,14 @@ def create_walk_forward_windows(
     logger.info(f"Created {len(windows)} walk-forward windows")
 
     # Log window info to MLflow
-    mlflow.log_params({
-        "wf.n_windows": len(windows),
-        "wf.train_size_days": config.get("train_size", 60),
-        "wf.test_size_days": config.get("test_size", 14),
-        "wf.step_size_days": config.get("step_size", config.get("test_size", 14)),
-    })
+    mlflow.log_params(
+        {
+            "wf.n_windows": len(windows),
+            "wf.train_size_days": config.get("train_size", 60),
+            "wf.test_size_days": config.get("test_size", 14),
+            "wf.step_size_days": config.get("step_size", config.get("test_size", 14)),
+        }
+    )
 
     return windows
 
@@ -211,27 +219,29 @@ def run_walk_forward_validation(
     signals_df = signals.value
 
     for window in windows:
-        logger.info(f"Processing window {window.window_id + 1}/{len(windows)}: "
-                   f"Train {window.train_start} to {window.train_end}, "
-                   f"Test {window.test_start} to {window.test_end}")
+        logger.info(
+            f"Processing window {window.window_id + 1}/{len(windows)}: "
+            f"Train {window.train_start} to {window.train_end}, "
+            f"Test {window.test_start} to {window.test_end}"
+        )
 
         # Filter data for this window
         train_features = features_df.filter(
-            (pl.col("timestamp") >= window.train_start) &
-            (pl.col("timestamp") < window.train_end)
+            (pl.col("timestamp") >= window.train_start)
+            & (pl.col("timestamp") < window.train_end)
         )
         train_labels = labels_df.filter(
-            (pl.col("timestamp") >= window.train_start) &
-            (pl.col("timestamp") < window.train_end)
+            (pl.col("timestamp") >= window.train_start)
+            & (pl.col("timestamp") < window.train_end)
         )
 
         test_features = features_df.filter(
-            (pl.col("timestamp") >= window.test_start) &
-            (pl.col("timestamp") < window.test_end)
+            (pl.col("timestamp") >= window.test_start)
+            & (pl.col("timestamp") < window.test_end)
         )
         test_signals = signals_df.filter(
-            (pl.col("timestamp") >= window.test_start) &
-            (pl.col("timestamp") < window.test_end)
+            (pl.col("timestamp") >= window.test_start)
+            & (pl.col("timestamp") < window.test_end)
         )
 
         # Skip window if insufficient data
@@ -261,7 +271,8 @@ def run_walk_forward_validation(
         exit_config = strategy_config.get("exit", {})
 
         entry_rule = SignalEntryRule(
-            base_position_size=current_capital * entry_config.get("position_size_pct", 0.1),
+            base_position_size=current_capital
+            * entry_config.get("position_size_pct", 0.1),
             max_positions_per_pair=entry_config.get("max_positions_per_pair", 1),
             max_total_positions=entry_config.get("max_total_positions", 5),
         )
@@ -288,8 +299,8 @@ def run_walk_forward_validation(
         # Filter raw_data for test period
         view = raw_data.view()
         test_df = view.to_polars("spot").filter(
-            (pl.col("timestamp") >= window.test_start) &
-            (pl.col("timestamp") < window.test_end)
+            (pl.col("timestamp") >= window.test_start)
+            & (pl.col("timestamp") < window.test_end)
         )
 
         try:
@@ -303,7 +314,11 @@ def run_walk_forward_validation(
             # Calculate Sharpe for this window
             if trades_df.height > 0:
                 returns = trades_df.select("pnl").to_series() / current_capital
-                sharpe = (returns.mean() / returns.std()) * np.sqrt(252) if returns.std() > 0 else 0
+                sharpe = (
+                    (returns.mean() / returns.std()) * np.sqrt(252)
+                    if returns.std() > 0
+                    else 0
+                )
                 win_rate = trades_df.filter(pl.col("pnl") > 0).height / trades_df.height
             else:
                 sharpe = 0
@@ -332,11 +347,13 @@ def run_walk_forward_validation(
             # Update capital for next window (compound returns)
             current_capital = state.capital
 
-            all_equity_points.append({
-                "window_id": window.window_id,
-                "timestamp": window.test_end,
-                "capital": current_capital,
-            })
+            all_equity_points.append(
+                {
+                    "window_id": window.window_id,
+                    "timestamp": window.test_end,
+                    "capital": current_capital,
+                }
+            )
 
         except Exception as e:
             logger.warning(f"Window {window.window_id} failed: {e}")
@@ -357,23 +374,30 @@ def run_walk_forward_validation(
         window_results.append(window_result)
 
         # Log per-window metrics to MLflow
-        mlflow.log_metrics({
-            f"wf.window_{window.window_id}.return": window_result["total_return"],
-            f"wf.window_{window.window_id}.sharpe": window_result["sharpe"],
-            f"wf.window_{window.window_id}.n_trades": window_result["n_trades"],
-        })
+        mlflow.log_metrics(
+            {
+                f"wf.window_{window.window_id}.return": window_result["total_return"],
+                f"wf.window_{window.window_id}.sharpe": window_result["sharpe"],
+                f"wf.window_{window.window_id}.n_trades": window_result["n_trades"],
+            }
+        )
 
     # Aggregate results
     all_trades_df = pl.concat(all_trades) if all_trades else pl.DataFrame()
     equity_curve = pl.DataFrame(all_equity_points)
 
-    aggregated_metrics = _aggregate_metrics(window_results, initial_capital, current_capital)
+    aggregated_metrics = _aggregate_metrics(
+        window_results, initial_capital, current_capital
+    )
 
     # Log aggregated metrics to MLflow
-    mlflow.log_metrics({
-        f"wf.agg.{k}": v for k, v in aggregated_metrics.items()
-        if isinstance(v, (int, float))
-    })
+    mlflow.log_metrics(
+        {
+            f"wf.agg.{k}": v
+            for k, v in aggregated_metrics.items()
+            if isinstance(v, (int, float))
+        }
+    )
 
     return WalkForwardResult(
         windows=windows,
@@ -400,8 +424,9 @@ def _train_validator(
     if train_df.height == 0:
         raise ValueError("No training data after joining features and labels")
 
-    feature_cols = [col for col in train_df.columns
-                    if col not in ["timestamp", "pair", "label"]]
+    feature_cols = [
+        col for col in train_df.columns if col not in ["timestamp", "pair", "label"]
+    ]
 
     X_train = train_df.select(feature_cols)
     y_train = train_df.select("label")
@@ -440,7 +465,9 @@ def _aggregate_metrics(
 
     # Average per-window metrics
     sharpes = [r["sharpe"] for r in window_results if r.get("sharpe")]
-    returns = [r["total_return"] for r in window_results if r.get("total_return") is not None]
+    returns = [
+        r["total_return"] for r in window_results if r.get("total_return") is not None
+    ]
     win_rates = [r["win_rate"] for r in window_results if r.get("win_rate")]
     n_trades = sum(r.get("n_trades", 0) for r in window_results)
 
@@ -454,7 +481,8 @@ def _aggregate_metrics(
 
     return {
         "total_return": total_return,
-        "annualized_return": total_return * (365 / (len(window_results) * 14)),  # Approximate
+        "annualized_return": total_return
+        * (365 / (len(window_results) * 14)),  # Approximate
         "sharpe_avg": np.mean(sharpes) if sharpes else 0,
         "sharpe_std": np.std(sharpes) if sharpes else 0,
         "sharpe_aggregate": aggregate_sharpe,

@@ -68,12 +68,14 @@ def create_optuna_study(
     logger.info(f"Created Optuna study: {study_name} (direction={direction})")
 
     # Log study info to MLflow
-    mlflow.log_params({
-        "optuna.study_name": study_name,
-        "optuna.direction": direction,
-        "optuna.sampler": sampler_config.get("type", "tpe"),
-        "optuna.pruner": pruner_config.get("type", "median"),
-    })
+    mlflow.log_params(
+        {
+            "optuna.study_name": study_name,
+            "optuna.direction": direction,
+            "optuna.sampler": sampler_config.get("type", "tpe"),
+            "optuna.pruner": pruner_config.get("type", "median"),
+        }
+    )
 
     return study
 
@@ -145,8 +147,9 @@ def tune_validator(
     train_df = train_data["full"]
     val_df = val_data["full"]
 
-    feature_cols = [col for col in train_df.columns
-                    if col not in ["timestamp", "pair", "label"]]
+    feature_cols = [
+        col for col in train_df.columns if col not in ["timestamp", "pair", "label"]
+    ]
 
     X_train = train_df.select(feature_cols)
     y_train = train_df.select("label")
@@ -245,7 +248,11 @@ def tune_detector(
             params = detector_cls.tune(trial, model_size=model_size)
         else:
             # Fallback to basic parameter suggestions
-            params = detector_cls.default_params() if hasattr(detector_cls, "default_params") else {}
+            params = (
+                detector_cls.default_params()
+                if hasattr(detector_cls, "default_params")
+                else {}
+            )
 
         # Create detector and generate signals
         detector = detector_cls(**params)
@@ -300,8 +307,8 @@ def _evaluate_signals(
     if metric == "precision":
         # Precision: correct signals / total signals
         correct = active.filter(
-            (pl.col("signal_type") == "rise") & (pl.col("label") == "rise") |
-            (pl.col("signal_type") == "fall") & (pl.col("label") == "fall")
+            (pl.col("signal_type") == "rise") & (pl.col("label") == "rise")
+            | (pl.col("signal_type") == "fall") & (pl.col("label") == "fall")
         ).height
         return correct / active.height if active.height > 0 else 0.0
 
@@ -309,15 +316,19 @@ def _evaluate_signals(
         # Recall: captured labels / total positive labels
         total_positive = labels.filter(pl.col("label") != "none").height
         correct = active.filter(
-            (pl.col("signal_type") == "rise") & (pl.col("label") == "rise") |
-            (pl.col("signal_type") == "fall") & (pl.col("label") == "fall")
+            (pl.col("signal_type") == "rise") & (pl.col("label") == "rise")
+            | (pl.col("signal_type") == "fall") & (pl.col("label") == "fall")
         ).height
         return correct / total_positive if total_positive > 0 else 0.0
 
     elif metric == "f1":
         precision = _evaluate_signals(signals, labels, "precision")
         recall = _evaluate_signals(signals, labels, "recall")
-        return 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+        return (
+            2 * precision * recall / (precision + recall)
+            if (precision + recall) > 0
+            else 0.0
+        )
 
     else:
         return 0.0
@@ -390,7 +401,11 @@ def tune_strategy(
             trades_df = runner.trades_df
 
             if trades_df.height == 0:
-                return float("-inf") if study.direction == optuna.study.StudyDirection.MAXIMIZE else float("inf")
+                return (
+                    float("-inf")
+                    if study.direction == optuna.study.StudyDirection.MAXIMIZE
+                    else float("inf")
+                )
 
             # Calculate metric
             if metric == "sharpe":
@@ -414,7 +429,11 @@ def tune_strategy(
 
         except Exception as e:
             logger.warning(f"Trial {trial.number} failed: {e}")
-            return float("-inf") if study.direction == optuna.study.StudyDirection.MAXIMIZE else float("inf")
+            return (
+                float("-inf")
+                if study.direction == optuna.study.StudyDirection.MAXIMIZE
+                else float("inf")
+            )
 
         # Log to MLflow
         mlflow.log_metric(f"strategy_trial_{trial.number}_{metric}", score)
@@ -506,12 +525,14 @@ def save_optuna_study(
     # Save all trials
     trials_data = []
     for trial in study.trials:
-        trials_data.append({
-            "number": trial.number,
-            "value": trial.value,
-            "params": trial.params,
-            "state": str(trial.state),
-        })
+        trials_data.append(
+            {
+                "number": trial.number,
+                "value": trial.value,
+                "params": trial.params,
+                "state": str(trial.state),
+            }
+        )
 
     with open(output_dir / "trials.json", "w") as f:
         json.dump(trials_data, f, indent=2, default=str)
@@ -580,9 +601,8 @@ def apply_best_params(
         updated_config["fee_rate"] = best_params.get("fee_rate", 0.001)
 
     # Log updated config
-    mlflow.log_params({
-        f"applied.{component_type}.{k}": v
-        for k, v in best_params.items()
-    })
+    mlflow.log_params(
+        {f"applied.{component_type}.{k}": v for k, v in best_params.items()}
+    )
 
     return updated_config

@@ -17,8 +17,16 @@ from sf_kedro.utils.telegram import TelegramNotifier
 
 # Color palette for pairs (consistent with project style)
 PAIR_COLORS = [
-    "#2171b5", "#e6550d", "#31a354", "#756bb1", "#d62728",
-    "#ff7f0e", "#1f77b4", "#2ca02c", "#9467bd", "#8c564b",
+    "#2171b5",
+    "#e6550d",
+    "#31a354",
+    "#756bb1",
+    "#d62728",
+    "#ff7f0e",
+    "#1f77b4",
+    "#2ca02c",
+    "#9467bd",
+    "#8c564b",
 ]
 
 
@@ -110,11 +118,13 @@ def build_feature_analysis_plots(
         stats=stats,
         correlations=correlations,
         quality_metrics=quality_metrics,
-        output_dir="data/08_reporting/feature_analysis"
+        output_dir="data/08_reporting/feature_analysis",
     )
 
     fig1 = _plot_feature_across_pairs(features_df, feature_name, pairs)
-    fig2 = _plot_feature_vs_price(raw_data, features_df, feature_name, price_pair, price_col)
+    fig2 = _plot_feature_vs_price(
+        raw_data, features_df, feature_name, price_pair, price_col
+    )
     fig3 = _plot_feature_distribution(features_df, feature_name, pairs, n_bins)
     fig4 = _plot_feature_normalized(features_df, feature_name, pairs)
 
@@ -136,7 +146,15 @@ def build_feature_analysis_plots(
                 indicator_type=indicator_type,
             )
 
-        _send_to_telegram(plots, telegram_config, feature_name, pairs, indicator_type, stats, text_report)
+        _send_to_telegram(
+            plots,
+            telegram_config,
+            feature_name,
+            pairs,
+            indicator_type,
+            stats,
+            text_report,
+        )
 
     return plots
 
@@ -178,6 +196,7 @@ def save_feature_analysis_plots(
 # Private helpers
 # ---------------------------------------------------------------------------
 
+
 def _calculate_feature_statistics(
     features_df: pl.DataFrame,
     feature_name: str,
@@ -186,13 +205,13 @@ def _calculate_feature_statistics(
     """Calculate statistical metrics for the feature across all pairs."""
     # Check if feature exists in dataframe
     if feature_name not in features_df.columns:
-        logger.warning(f"Feature '{feature_name}' not found in features_df. Available columns: {features_df.columns}")
+        logger.warning(
+            f"Feature '{feature_name}' not found in features_df. Available columns: {features_df.columns}"
+        )
         return {}
 
     all_values = (
-        features_df
-        .drop_nulls(subset=[feature_name])
-        [feature_name]
+        features_df.drop_nulls(subset=[feature_name])[feature_name]
         .to_numpy()
         .astype(float)
     )
@@ -201,7 +220,9 @@ def _calculate_feature_statistics(
     all_values = all_values[np.isfinite(all_values)]
 
     if len(all_values) == 0:
-        logger.warning(f"No valid (non-NaN, non-inf) values found for feature '{feature_name}'")
+        logger.warning(
+            f"No valid (non-NaN, non-inf) values found for feature '{feature_name}'"
+        )
         return {}
 
     stats = {
@@ -220,7 +241,9 @@ def _calculate_feature_statistics(
 
     # Check if we have enough data points
     if len(all_values) < 3:
-        logger.warning(f"Not enough data points ({len(all_values)}) to calculate skewness/kurtosis")
+        logger.warning(
+            f"Not enough data points ({len(all_values)}) to calculate skewness/kurtosis"
+        )
         stats["skewness"] = 0.0
         stats["kurtosis"] = 0.0
     else:
@@ -228,16 +251,22 @@ def _calculate_feature_statistics(
         stats["kurtosis"] = float(scipy_stats.kurtosis(all_values))
 
     # Determine if transformation is needed
-    stats["needs_transform"] = abs(stats["skewness"]) > 1.0 or abs(stats["kurtosis"]) > 3.0
+    stats["needs_transform"] = (
+        abs(stats["skewness"]) > 1.0 or abs(stats["kurtosis"]) > 3.0
+    )
     stats["transform_reason"] = []
 
     if abs(stats["skewness"]) > 1.0:
         direction = "right" if stats["skewness"] > 0 else "left"
-        stats["transform_reason"].append(f"High skewness ({stats['skewness']:.2f}, {direction}-skewed)")
+        stats["transform_reason"].append(
+            f"High skewness ({stats['skewness']:.2f}, {direction}-skewed)"
+        )
 
     if abs(stats["kurtosis"]) > 3.0:
         tail_type = "heavy" if stats["kurtosis"] > 0 else "light"
-        stats["transform_reason"].append(f"Extreme kurtosis ({stats['kurtosis']:.2f}, {tail_type} tails)")
+        stats["transform_reason"].append(
+            f"Extreme kurtosis ({stats['kurtosis']:.2f}, {tail_type} tails)"
+        )
 
     return stats
 
@@ -271,8 +300,7 @@ def _calculate_pair_correlations(
         try:
             # Get feature data for this pair
             feat_pair = (
-                features_df
-                .filter(pl.col("pair") == pair)
+                features_df.filter(pl.col("pair") == pair)
                 .select(["timestamp", feature_name])
                 .drop_nulls()
                 .sort("timestamp")
@@ -280,8 +308,7 @@ def _calculate_pair_correlations(
 
             # Get price data for this pair
             price_pair = (
-                price_df
-                .filter(pl.col("pair") == pair)
+                price_df.filter(pl.col("pair") == pair)
                 .select(["timestamp", price_col])
                 .sort("timestamp")
             )
@@ -447,8 +474,10 @@ def _format_text_report(
     # Sort by correlation (absolute value)
     sorted_pairs = sorted(
         pairs,
-        key=lambda p: abs(correlations.get(p, 0.0)) if correlations.get(p) is not None else -1,
-        reverse=True
+        key=lambda p: (
+            abs(correlations.get(p, 0.0)) if correlations.get(p) is not None else -1
+        ),
+        reverse=True,
     )
 
     for pair in sorted_pairs:
@@ -470,13 +499,11 @@ def _format_text_report(
 
     for pair in pairs:
         qm = quality_metrics.get(pair, {})
-        valid_pct = qm.get('valid_pct', 0.0)
-        nan_count = qm.get('nan_count', 0)
-        total_rows = qm.get('total_rows', 0)
+        valid_pct = qm.get("valid_pct", 0.0)
+        nan_count = qm.get("nan_count", 0)
+        total_rows = qm.get("total_rows", 0)
 
-        lines.append(
-            f"{pair:<12} {valid_pct:>7.2f}% {nan_count:>8,} {total_rows:>8,}"
-        )
+        lines.append(f"{pair:<12} {valid_pct:>7.2f}% {nan_count:>8,} {total_rows:>8,}")
 
     lines.append("</pre>")
     lines.append("")
@@ -485,20 +512,20 @@ def _format_text_report(
     lines.append("<b>Time Coverage:</b>")
     for pair in pairs:
         qm = quality_metrics.get(pair, {})
-        time_start = qm.get('time_start')
-        time_end = qm.get('time_end')
+        time_start = qm.get("time_start")
+        time_end = qm.get("time_end")
 
         if time_start and time_end:
-            start_str = time_start.strftime('%Y-%m-%d %H:%M')
-            end_str = time_end.strftime('%Y-%m-%d %H:%M')
+            start_str = time_start.strftime("%Y-%m-%d %H:%M")
+            end_str = time_end.strftime("%Y-%m-%d %H:%M")
             lines.append(f"  <code>{pair}:</code> {start_str} → {end_str}")
 
     lines.append("")
 
     # Section 5: Transformation recommendation
-    if stats.get('needs_transform'):
+    if stats.get("needs_transform"):
         lines.append("<b>⚠️ TRANSFORMATION RECOMMENDATION</b>")
-        for reason in stats.get('transform_reason', []):
+        for reason in stats.get("transform_reason", []):
             lines.append(f"  • {reason}")
         lines.append("")
 
@@ -546,9 +573,7 @@ def _generate_text_report(
     )
 
     # Calculate data quality metrics
-    quality_metrics = _calculate_data_quality(
-        features_df, feature_name, pairs
-    )
+    quality_metrics = _calculate_data_quality(features_df, feature_name, pairs)
 
     # Format into text report
     report = _format_text_report(
@@ -596,7 +621,7 @@ def _save_statistics_to_file(
                 elif np.isinf(val):
                     return None
                 return val
-            elif hasattr(v, 'isoformat'):  # datetime
+            elif hasattr(v, "isoformat"):  # datetime
                 return v.isoformat()
             return v
 
@@ -605,8 +630,8 @@ def _save_statistics_to_file(
         avg_corr = float(np.mean(valid_corrs)) if valid_corrs else None
 
         # Calculate average data quality
-        total_valid = sum(qm.get('valid_count', 0) for qm in quality_metrics.values())
-        total_rows = sum(qm.get('total_rows', 0) for qm in quality_metrics.values())
+        total_valid = sum(qm.get("valid_count", 0) for qm in quality_metrics.values())
+        total_rows = sum(qm.get("total_rows", 0) for qm in quality_metrics.values())
         avg_valid_pct = (total_valid / total_rows * 100) if total_rows > 0 else 0.0
 
         # Build comprehensive stats dict
@@ -615,32 +640,33 @@ def _save_statistics_to_file(
             "indicator_type": indicator_type,
             "timestamp": datetime.now().isoformat(),
             "global_stats": {
-                k: serialize_value(v) for k, v in stats.items()
-                if k not in ['transform_reason']  # Skip list field for now
+                k: serialize_value(v)
+                for k, v in stats.items()
+                if k not in ["transform_reason"]  # Skip list field for now
             },
-            "transform_needed": stats.get('needs_transform', False),
-            "transform_reasons": stats.get('transform_reason', []),
+            "transform_needed": stats.get("needs_transform", False),
+            "transform_reasons": stats.get("transform_reason", []),
             "correlations": {
-                pair: serialize_value(corr)
-                for pair, corr in correlations.items()
+                pair: serialize_value(corr) for pair, corr in correlations.items()
             },
             "avg_correlation": serialize_value(avg_corr),
             "data_quality": {
                 "avg_valid_pct": serialize_value(avg_valid_pct),
                 "per_pair": {
                     pair: {
-                        "valid_pct": serialize_value(qm.get('valid_pct', 0)),
-                        "nan_count": serialize_value(qm.get('nan_count', 0)),
-                        "total_rows": serialize_value(qm.get('total_rows', 0)),
+                        "valid_pct": serialize_value(qm.get("valid_pct", 0)),
+                        "nan_count": serialize_value(qm.get("nan_count", 0)),
+                        "total_rows": serialize_value(qm.get("total_rows", 0)),
                     }
                     for pair, qm in quality_metrics.items()
-                }
-            }
+                },
+            },
         }
 
         # Write to file (use allow_nan=False to ensure valid JSON)
         # Replace NaN with null before writing
         import math
+
         def replace_nan(obj):
             if isinstance(obj, dict):
                 return {k: replace_nan(v) for k, v in obj.items()}
@@ -652,7 +678,7 @@ def _save_statistics_to_file(
 
         comprehensive_stats = replace_nan(comprehensive_stats)
 
-        with open(stats_file, 'w') as f:
+        with open(stats_file, "w") as f:
             json.dump(comprehensive_stats, f, indent=2)
 
         logger.info(f"Statistics saved to: {stats_file}")
@@ -671,34 +697,36 @@ def _plot_feature_across_pairs(
 
     for i, pair in enumerate(pairs):
         pair_df = (
-            features_df
-            .filter(pl.col("pair") == pair)
+            features_df.filter(pl.col("pair") == pair)
             .sort("timestamp")
             .drop_nulls(subset=[feature_name])
         )
         if pair_df.height == 0:
             continue
 
-        fig.add_trace(go.Scatter(
-            x=pair_df["timestamp"].to_list(),
-            y=pair_df[feature_name].to_list(),
-            mode="lines",
-            name=pair,
-            line=dict(color=PAIR_COLORS[i % len(PAIR_COLORS)], width=1.5),
-            hovertemplate=(
-                f"<b>{pair}</b><br>"
-                "Time: %{x}<br>"
-                f"{feature_name}: %{{y:.2f}}"
-                "<extra></extra>"
-            ),
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=pair_df["timestamp"].to_list(),
+                y=pair_df[feature_name].to_list(),
+                mode="lines",
+                name=pair,
+                line=dict(color=PAIR_COLORS[i % len(PAIR_COLORS)], width=1.5),
+                hovertemplate=(
+                    f"<b>{pair}</b><br>"
+                    "Time: %{x}<br>"
+                    f"{feature_name}: %{{y:.2f}}"
+                    "<extra></extra>"
+                ),
+            )
+        )
 
     fig.update_layout(
         **_base_layout(),
         title=dict(
             text=f"<b>{feature_name.upper()} across pairs</b>",
             font=dict(color="#333333", size=18),
-            x=0.5, xanchor="center",
+            x=0.5,
+            xanchor="center",
         ),
         xaxis_title="Time",
         yaxis_title=feature_name.upper(),
@@ -715,16 +743,14 @@ def _plot_feature_vs_price(
 ) -> go.Figure:
     """Plot 2: Feature vs close price for a single pair (dual y-axis)."""
     feat_pair = (
-        features_df
-        .filter(pl.col("pair") == price_pair)
+        features_df.filter(pl.col("pair") == price_pair)
         .sort("timestamp")
         .drop_nulls(subset=[feature_name])
     )
 
     spot_df = raw_data.get("spot")
     price_df = (
-        spot_df
-        .filter(pl.col("pair") == price_pair)
+        spot_df.filter(pl.col("pair") == price_pair)
         .sort("timestamp")
         .select(["timestamp", price_col])
     )
@@ -770,7 +796,8 @@ def _plot_feature_vs_price(
         title=dict(
             text=f"<b>{feature_name.upper()} vs Price ({price_pair})</b>",
             font=dict(color="#333333", size=18),
-            x=0.5, xanchor="center",
+            x=0.5,
+            xanchor="center",
         ),
         xaxis_title="Time",
     )
@@ -791,28 +818,28 @@ def _plot_feature_distribution(
 
     for i, pair in enumerate(pairs):
         vals = (
-            features_df
-            .filter(pl.col("pair") == pair)
-            .drop_nulls(subset=[feature_name])
-            [feature_name]
+            features_df.filter(pl.col("pair") == pair)
+            .drop_nulls(subset=[feature_name])[feature_name]
             .to_numpy()
         )
         if len(vals) == 0:
             continue
 
-        fig.add_trace(go.Histogram(
-            x=vals,
-            nbinsx=n_bins,
-            name=pair,
-            marker_color=PAIR_COLORS[i % len(PAIR_COLORS)],
-            opacity=0.6,
-            hovertemplate=(
-                f"<b>{pair}</b><br>"
-                f"{feature_name}: %{{x:.2f}}<br>"
-                "Count: %{y}"
-                "<extra></extra>"
-            ),
-        ))
+        fig.add_trace(
+            go.Histogram(
+                x=vals,
+                nbinsx=n_bins,
+                name=pair,
+                marker_color=PAIR_COLORS[i % len(PAIR_COLORS)],
+                opacity=0.6,
+                hovertemplate=(
+                    f"<b>{pair}</b><br>"
+                    f"{feature_name}: %{{x:.2f}}<br>"
+                    "Count: %{y}"
+                    "<extra></extra>"
+                ),
+            )
+        )
 
     fig.update_layout(
         **_base_layout(),
@@ -820,7 +847,8 @@ def _plot_feature_distribution(
         title=dict(
             text=f"<b>{feature_name.upper()} Distribution</b>",
             font=dict(color="#333333", size=18),
-            x=0.5, xanchor="center",
+            x=0.5,
+            xanchor="center",
         ),
         xaxis_title=feature_name.upper(),
         yaxis_title="Count",
@@ -838,8 +866,7 @@ def _plot_feature_normalized(
 
     for i, pair in enumerate(pairs):
         pair_df = (
-            features_df
-            .filter(pl.col("pair") == pair)
+            features_df.filter(pl.col("pair") == pair)
             .sort("timestamp")
             .drop_nulls(subset=[feature_name])
         )
@@ -854,19 +881,21 @@ def _plot_feature_normalized(
         else:
             normalized = (values - mean) / std
 
-        fig.add_trace(go.Scatter(
-            x=pair_df["timestamp"].to_list(),
-            y=normalized.tolist(),
-            mode="lines",
-            name=pair,
-            line=dict(color=PAIR_COLORS[i % len(PAIR_COLORS)], width=1.5),
-            hovertemplate=(
-                f"<b>{pair}</b><br>"
-                "Time: %{x}<br>"
-                "Z-score: %{y:.2f}"
-                "<extra></extra>"
-            ),
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=pair_df["timestamp"].to_list(),
+                y=normalized.tolist(),
+                mode="lines",
+                name=pair,
+                line=dict(color=PAIR_COLORS[i % len(PAIR_COLORS)], width=1.5),
+                hovertemplate=(
+                    f"<b>{pair}</b><br>"
+                    "Time: %{x}<br>"
+                    "Z-score: %{y:.2f}"
+                    "<extra></extra>"
+                ),
+            )
+        )
 
     fig.add_hline(y=0, line=dict(color="gray", dash="dash", width=1))
 
@@ -875,7 +904,8 @@ def _plot_feature_normalized(
         title=dict(
             text=f"<b>{feature_name.upper()} Normalized (Z-score)</b>",
             font=dict(color="#333333", size=18),
-            x=0.5, xanchor="center",
+            x=0.5,
+            xanchor="center",
         ),
         xaxis_title="Time",
         yaxis_title="Z-score",
@@ -923,7 +953,7 @@ def _send_to_telegram(
         # Generate hashtags from indicator type (e.g., "momentum/rsi" -> "#momentum #rsi")
         hashtags = ""
         if indicator_type:
-            tags = indicator_type.split('/')
+            tags = indicator_type.split("/")
             hashtags = " ".join(f"#{tag}" for tag in tags)
 
         # Build caption with statistics
@@ -943,12 +973,13 @@ def _send_to_telegram(
                 f"Mean: {stats['mean']:.3f} | Std: {stats['std']:.3f}\n"
                 f"Skew: {stats['skewness']:.3f} | Kurt: {stats['kurtosis']:.3f}\n"
             )
-            if stats.get('needs_transform'):
-                caption += f"⚠️ Needs transform: {', '.join(stats['transform_reason'])}\n"
+            if stats.get("needs_transform"):
+                caption += (
+                    f"⚠️ Needs transform: {', '.join(stats['transform_reason'])}\n"
+                )
 
         caption += (
-            f"\nGenerated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-            f"{hashtags}"
+            f"\nGenerated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n{hashtags}"
         )
 
         all_figures = plots.get("feature_analysis", [])

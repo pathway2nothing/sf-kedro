@@ -23,6 +23,7 @@ def _get_mlflow():
         return None
     try:
         import mlflow
+
         return mlflow
     except ImportError:
         return None

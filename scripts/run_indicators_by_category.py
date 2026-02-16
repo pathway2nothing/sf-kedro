@@ -20,7 +20,7 @@ from run_all_indicators import (
     update_parameters_file,
     run_feature_analysis_pipeline,
     read_latest_stats,
-    generate_consolidated_report
+    generate_consolidated_report,
 )
 import time
 from datetime import datetime
@@ -33,10 +33,10 @@ def list_categories():
 
     categories = {}
     for registry_name, _ in indicators:
-        if '/' in registry_name:
-            category = registry_name.split('/')[0]
+        if "/" in registry_name:
+            category = registry_name.split("/")[0]
         else:
-            category = 'other'
+            category = "other"
 
         if category not in categories:
             categories[category] = []
@@ -78,10 +78,12 @@ def main():
         print("Usage: python3 run_indicators_by_category.py <category>")
         print("       python3 run_indicators_by_category.py --list")
         print()
-        print("Categories: momentum, volatility, volume, trend, overlap, stat, divergence")
+        print(
+            "Categories: momentum, volatility, volume, trend, overlap, stat, divergence"
+        )
         sys.exit(1)
 
-    if sys.argv[1] == '--list':
+    if sys.argv[1] == "--list":
         list_categories()
         sys.exit(0)
 
@@ -108,12 +110,7 @@ def main():
     print()
 
     # Track results and statistics
-    results = {
-        "category": category,
-        "successful": [],
-        "failed": [],
-        "skipped": []
-    }
+    results = {"category": category, "successful": [], "failed": [], "skipped": []}
     all_stats = []  # Collect statistics for consolidated report
 
     # Process each indicator
@@ -142,11 +139,9 @@ def main():
 
             if success:
                 print(f"  ✅ Success! (took {elapsed:.1f}s)")
-                results["successful"].append({
-                    "registry_name": registry_name,
-                    "params": params,
-                    "time": elapsed
-                })
+                results["successful"].append(
+                    {"registry_name": registry_name, "params": params, "time": elapsed}
+                )
 
                 # Read and collect statistics
                 stats = read_latest_stats()
@@ -155,17 +150,13 @@ def main():
                     print(f"  📊 Statistics collected")
             else:
                 print(f"  ❌ Failed!")
-                results["failed"].append({
-                    "registry_name": registry_name,
-                    "params": params
-                })
+                results["failed"].append(
+                    {"registry_name": registry_name, "params": params}
+                )
 
         except Exception as e:
             print(f"  ❌ Error: {e}")
-            results["failed"].append({
-                "registry_name": registry_name,
-                "error": str(e)
-            })
+            results["failed"].append({"registry_name": registry_name, "error": str(e)})
 
     # Print summary
     print("\n" + "=" * 80)
@@ -176,27 +167,31 @@ def main():
     print(f"⏭️  Skipped: {len(results['skipped'])}")
     print()
 
-    if results['successful']:
+    if results["successful"]:
         print("Successful indicators:")
-        for item in results['successful']:
+        for item in results["successful"]:
             print(f"  • {item['registry_name']} - {item['time']:.1f}s")
 
-    if results['failed']:
+    if results["failed"]:
         print("\nFailed indicators:")
-        for item in results['failed']:
+        for item in results["failed"]:
             print(f"  • {item['registry_name']}")
-            if 'error' in item:
+            if "error" in item:
                 print(f"    Error: {item['error']}")
 
     # Save results to file
-    results_file = Path(f"indicator_analysis_{category}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.yaml")
-    with open(results_file, 'w') as f:
+    results_file = Path(
+        f"indicator_analysis_{category}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.yaml"
+    )
+    with open(results_file, "w") as f:
         yaml.dump(results, f, default_flow_style=False)
     print(f"\n💾 Results saved to: {results_file}")
 
     # Generate consolidated statistics report
     if all_stats:
-        report_file = Path(f"indicator_analysis_{category}_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
+        report_file = Path(
+            f"indicator_analysis_{category}_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        )
         print(f"\n📊 Generating consolidated report for {category}...")
         generate_consolidated_report(all_stats, report_file)
         print(f"💾 Consolidated report saved to: {report_file}")
@@ -206,7 +201,7 @@ def main():
     print("=" * 80)
 
     # Exit with appropriate code
-    sys.exit(0 if not results['failed'] else 1)
+    sys.exit(0 if not results["failed"] else 1)
 
 
 if __name__ == "__main__":
