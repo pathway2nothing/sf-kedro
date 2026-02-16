@@ -1,19 +1,26 @@
 # sf_kedro/utils/telegram.py
 
 import os
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, TYPE_CHECKING
 from pathlib import Path
 import tempfile
 from io import BytesIO
-import telebot
-from telebot.types import InputMediaPhoto
 from loguru import logger
 import plotly.graph_objects as go
+
+try:
+    import telebot
+    from telebot.types import InputMediaPhoto
+    TELEBOT_AVAILABLE = True
+except ImportError:
+    TELEBOT_AVAILABLE = False
+    telebot = None
+    InputMediaPhoto = None
 
 
 class TelegramNotifier:
     """Send plots and messages to Telegram channel using pyTelegramBotAPI."""
-    
+
     def __init__(
         self,
         bot_token: Optional[str] = None,
@@ -21,20 +28,26 @@ class TelegramNotifier:
     ):
         """
         Initialize Telegram notifier.
-        
+
         Args:
             bot_token: Telegram bot token (from @BotFather)
             chat_id: Channel ID (e.g., "@my_channel" or "-100123456789")
         """
+        if not TELEBOT_AVAILABLE:
+            raise ImportError(
+                "pyTelegramBotAPI is not installed. "
+                "Install it with: pip install pyTelegramBotAPI"
+            )
+
         self.bot_token = bot_token or os.getenv("TELEGRAM_BOT_TOKEN")
         self.chat_id = chat_id or os.getenv("TELEGRAM_CHAT_ID")
-        
+
         if not self.bot_token or not self.chat_id:
             raise ValueError(
                 "Telegram bot_token and chat_id must be provided either "
                 "as arguments or via TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID env vars"
             )
-        
+
         self.bot = telebot.TeleBot(self.bot_token)
         logger.info(f"Telegram bot initialized for chat: {self.chat_id}")
     
