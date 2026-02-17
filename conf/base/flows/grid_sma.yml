@@ -47,5 +47,5 @@ strategy:
     - type: "total_return"
     - type: "win_rate"
     - type: "sharpe_ratio"
-    - type: "max_drawdown"
+    - type: "drawdown"
     - type: "profit_factor"
