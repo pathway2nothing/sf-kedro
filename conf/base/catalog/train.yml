@@ -1,0 +1,37 @@
+# Train Pipeline Catalog
+
+train_config:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/train/config.pkl
+
+train_raw_data:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/train/raw_data.pkl
+
+train_signals:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/train/signals.pkl
+
+train_labeled_data:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/train/labeled_data.pkl
+
+X_train:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/X_train.pkl
+
+y_train:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/y_train.pkl
+
+X_val:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/X_val.pkl
+
+y_val:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/y_val.pkl
+
+trained_validator:
+  type: pickle.PickleDataset
+  filepath: data/06_models/trained_validator.pkl

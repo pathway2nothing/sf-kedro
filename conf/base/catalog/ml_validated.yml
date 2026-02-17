@@ -1,5 +1,5 @@
 ml_store_path:
-  type: text.TextDataset
+  type: kedro_datasets.text.TextDataset
   filepath: data/01_raw/store_path.txt
 
 ml_raw_data:

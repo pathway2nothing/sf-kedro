@@ -1,0 +1,23 @@
+# Pipeline Parameters
+# SF flow configs are loaded from conf/base/flows/{flow_id}.yml
+#
+# Usage:
+#   kedro run --pipeline=backtest
+#   kedro run --pipeline=backtest --params='flow_id=grid_sma'
+#   kedro run --pipeline=tune --params='flow_id=grid_sma,level=detector,n_trials=100'
+
+# Default flow ID (used by all pipelines)
+flow_id: "grid_sma"
+
+# Common settings (merged with flow config)
+common:
+  telegram:
+    enabled: true
+    bot_token: null
+    chat_id: null
+
+# Pipeline-specific params
+level: "all"          # analyze: features/signals/all, tune: detector/strategy
+validator_type: "validator/lightgbm"  # train: validator/lightgbm, validator/xgboost
+n_trials: 50          # tune: number of Optuna trials
+n_folds: 5            # validate: walk-forward folds

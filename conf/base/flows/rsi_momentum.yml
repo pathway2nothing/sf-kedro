@@ -1,0 +1,36 @@
+# RSI Momentum Strategy
+# Run: kedro run --pipeline=backtest --params='flow_id:rsi_momentum'
+
+flow_id: rsi_momentum
+flow_name: "RSI Momentum"
+description: "Momentum strategy using RSI oversold/overbought signals"
+
+# Data config
+data:
+  pairs:
+    - BTCUSDT
+    - ETHUSDT
+
+# Signal detector
+detector:
+  type: "example/rsi_cross"
+  period: 14
+  oversold: 30
+  overbought: 70
+  price_col: "close"
+
+# Strategy config
+strategy:
+  strategy_id: "rsi_momentum"
+
+  entry_rules:
+    - type: "signal"
+      base_position_size: 300.0
+      max_positions_per_pair: 3
+      max_total_positions: 10
+      min_probability: 0.0
+
+  exit_rules:
+    - type: "tp_sl"
+      take_profit_pct: 0.025
+      stop_loss_pct: 0.015

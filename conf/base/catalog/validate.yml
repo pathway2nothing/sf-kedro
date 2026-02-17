@@ -1,0 +1,13 @@
+# Validate Pipeline Catalog
+
+validate_config:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/validate/config.pkl
+
+validate_raw_data:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/validate/raw_data.pkl
+
+validation_results:
+  type: pickle.PickleDataset
+  filepath: data/08_reporting/validation/results.pkl

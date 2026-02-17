@@ -1,0 +1,13 @@
+# Tune Pipeline Catalog
+
+tune_config:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/tune/config.pkl
+
+tune_raw_data:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/tune/raw_data.pkl
+
+optimization_results:
+  type: pickle.PickleDataset
+  filepath: data/06_models/optimization_results.pkl

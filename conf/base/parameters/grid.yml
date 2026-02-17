@@ -1,0 +1,123 @@
+# Grid Strategy Pipeline Configuration
+#
+# This configuration demonstrates a signal-based grid strategy:
+# - Uses PriceDistanceFilter to ensure minimum spacing between positions
+# - Allows multiple positions per pair (max_positions_per_pair)
+# - Each position has independent TP/SL exits
+#
+# The grid forms dynamically from signals, not pre-defined levels.
+
+grid:
+  data:
+    store:
+      type: duckdb/spot
+      db_path: "data/01_raw/market.duckdb"
+
+    loader:
+      type: binance/spot
+
+    pairs:
+      - BTCUSDT
+      - ETHUSDT
+      - SOLUSDT
+      - BNBUSDT
+      - XRPUSDT
+
+    period:
+      start:
+        year: 2025
+        month: 11
+        day: 1
+      end:
+        year: 2025
+        month: 12
+        day: 31
+
+  # Signal detector - generates raw signals before grid filtering
+  detector:
+    type: "example/sma_cross"
+    fast_period: 60
+    slow_period: 720
+    price_col: "close"
+
+  signal_metrics:
+    pair:
+      pairs:
+        - BTCUSDT
+        - ETHUSDT
+        - SOLUSDT
+        - BNBUSDT
+        - XRPUSDT
+    profile:
+      look_ahead: 1440
+      quantiles: [0.25, 0.75]
+    distribution:
+      n_bars: 10
+    classification:
+      positive_labels: ['rise', 'up', 1, 'positive', 'buy']
+      negative_labels: ['fall', 'down', 0, 'negative', 'sell']
+      roc_n_thresholds: 100
+      chart_height: 900
+      chart_width: 1400
+
+  labeling:
+    type: "fixed_horizon"
+    horizon: 120
+    price_col: "close"
+
+  signal_plots_output_dir: "data/08_reporting/grid/signals"
+
+  # Grid strategy configuration
+  strategy:
+    db_path: "data/07_model_output/strategy_grid.duckdb"
+    initial_capital: 10000.0
+    fee_rate: 0.001
+    slippage_pct: 0.001
+    strategy_id: "grid_strategy"
+    data_key: "spot"
+
+    entry_rules:
+      # SignalEntryRule with embedded PriceDistanceFilter for grid behavior
+      - type: "signal"
+        base_position_size: 200.0
+        max_positions_per_pair: 5      # Allow multiple positions per pair
+        max_total_positions: 25        # 5 pairs × 5 positions
+        min_probability: 0.0           # Accept all signals from detector
+        use_probability_sizing: false
+
+        # Grid filters - blocks signals too close to existing positions
+        entry_filters:
+          - type: "price_distance_filter"
+            min_distance_pct: 0.02     # 2% minimum spacing between positions
+            direction_aware: true      # Consider position direction when filtering
+
+    exit_rules:
+      # Independent TP/SL for each grid position
+      - type: "tp_sl"
+        take_profit_pct: 0.015  # 1.5% take profit
+        stop_loss_pct: 0.01     # 1% stop loss
+
+    metrics:
+      - type: "total_return"
+        initial_capital: 10000
+
+      - type: "balance_allocation"
+        initial_capital: 10000
+
+      - type: "drawdown"
+
+      - type: "win_rate"
+
+      - type: "sharpe_ratio"
+
+  strategy_metrics:
+    result_main: {}
+    result_pair:
+      pairs:
+        - BTCUSDT
+        - ETHUSDT
+        - SOLUSDT
+      price_col: "close"
+      ts_col: "timestamp"
+
+  strategy_plots_output_dir: "data/08_reporting/grid/strategy"

@@ -193,6 +193,27 @@ class TelegramNotifier:
         logger.info(f"Completed sending {total_metrics} metrics to Telegram")
 
 
+def send_message_to_telegram(
+    message: str,
+    bot_token: str | None = None,
+    chat_id: str | None = None,
+) -> None:
+    """
+    Send text message to Telegram.
+
+    Args:
+        message: Text message to send (HTML supported)
+        bot_token: Telegram bot token (or set TELEGRAM_BOT_TOKEN env var)
+        chat_id: Channel ID (or set TELEGRAM_CHAT_ID env var)
+    """
+    try:
+        notifier = TelegramNotifier(bot_token=bot_token, chat_id=chat_id)
+        notifier.send_message(message)
+    except Exception as e:
+        logger.error(f"Failed to send message to Telegram: {e}")
+        raise
+
+
 def send_plots_to_telegram(
     plots: dict[str, list[go.Figure] | go.Figure],
     bot_token: str | None = None,

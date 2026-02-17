@@ -1,0 +1,25 @@
+# Universal Backtest Pipeline Catalog
+
+flow_config:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/backtest/flow_config.pkl
+
+flow_raw_data:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/backtest/raw_data.pkl
+
+flow_signals:
+  type: pickle.PickleDataset
+  filepath: data/03_primary/backtest/signals.pkl
+
+flow_results:
+  type: pickle.PickleDataset
+  filepath: data/07_model_output/backtest/results.pkl
+
+flow_state:
+  type: pickle.PickleDataset
+  filepath: data/07_model_output/backtest/state.pkl
+
+flow_metrics:
+  type: pickle.PickleDataset
+  filepath: data/08_reporting/backtest/metrics.pkl

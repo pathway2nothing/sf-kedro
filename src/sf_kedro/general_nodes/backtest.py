@@ -24,7 +24,7 @@ def run_backtest(
     from signalflow.data.strategy_store import DuckDbStrategyStore
     from signalflow.strategy.broker import BacktestBroker
     from signalflow.strategy.broker.executor import VirtualSpotExecutor
-    from signalflow.strategy.runner import OptimizedBacktestRunner
+    from signalflow.strategy.runner import BacktestRunner
 
     # Create components
     strategy_store = DuckDbStrategyStore(strategy_config.get("db_path", "strategy.duckdb"))
@@ -39,7 +39,20 @@ def run_backtest(
 
     entry_rules = []
     for rule_config in strategy_config.get("entry_rules", []):
+        rule_config = rule_config.copy()  # Don't mutate original
         rule_type = rule_config.pop("type")
+
+        # Handle nested entry_filters
+        if "entry_filters" in rule_config:
+            filters = []
+            for filter_config in rule_config.pop("entry_filters"):
+                filter_config = filter_config.copy()
+                filter_type = filter_config.pop("type")
+                filters.append(
+                    sf.get_component(type=sf.SfComponentType.STRATEGY_ENTRY_RULE, name=filter_type)(**filter_config)
+                )
+            rule_config["entry_filters"] = filters
+
         entry_rules.append(sf.get_component(type=sf.SfComponentType.STRATEGY_ENTRY_RULE, name=rule_type)(**rule_config))
 
     exit_rules = []
@@ -54,7 +67,7 @@ def run_backtest(
 
     initial_capital = strategy_config.get("initial_capital", 100000)
 
-    runner = OptimizedBacktestRunner(
+    runner = BacktestRunner(
         strategy_id=strategy_config.get("strategy_id", "default_strategy"),
         broker=broker,
         entry_rules=entry_rules,
@@ -67,10 +80,13 @@ def run_backtest(
     final_state = runner.run(raw_data, validated_signals)
     results = runner.get_results()
 
-    logger.success(f"\nFinal Equity: ${results['final_equity']:.2f}")
-    logger.info(f"Total Return: {results['final_return'] * 100:.2f}%")
+    if "final_equity" in results:
+        logger.success(f"\nFinal Equity: ${results['final_equity']:.2f}")
+    if "final_return" in results:
+        logger.info(f"Total Return: {results['final_return'] * 100:.2f}%")
     logger.info(f"Trades Executed: {results['total_trades']}")
-    logger.info("Recent Trades:")
-    logger.info(results["trades_df"].tail(10))
+    if results["trades_df"].height > 0:
+        logger.info("Recent Trades:")
+        logger.info(results["trades_df"].tail(10))
 
     return results, final_state

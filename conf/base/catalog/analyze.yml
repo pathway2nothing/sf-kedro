@@ -1,0 +1,21 @@
+# Analyze Pipeline Catalog
+
+analyze_config:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/analyze/config.pkl
+
+analyze_raw_data:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/analyze/raw_data.pkl
+
+analyze_signals:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/analyze/signals.pkl
+
+feature_results:
+  type: pickle.PickleDataset
+  filepath: data/08_reporting/analyze/feature_results.pkl
+
+signal_results:
+  type: pickle.PickleDataset
+  filepath: data/08_reporting/analyze/signal_results.pkl

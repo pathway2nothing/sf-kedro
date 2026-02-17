@@ -1,0 +1,62 @@
+# Common/shared configuration for all SignalFlow pipelines
+# Individual flow configs in conf/base/flows/ override these defaults
+
+# === Telegram notifications ===
+telegram:
+  enabled: true
+  bot_token: null  # TELEGRAM_BOT_TOKEN env var
+  chat_id: null    # TELEGRAM_CHAT_ID env var
+  image_width: 1400
+  image_height: 900
+  raise_on_error: false
+
+# === Default data settings ===
+defaults:
+  data:
+    store:
+      type: duckdb/spot
+      db_path: "data/01_raw/market.duckdb"
+    loader:
+      type: binance/spot
+    period:
+      start:
+        year: 2025
+        month: 11
+        day: 1
+      end:
+        year: 2025
+        month: 12
+        day: 31
+
+  # Default strategy settings
+  strategy:
+    initial_capital: 10000.0
+    fee_rate: 0.001
+    slippage_pct: 0.001
+    data_key: "spot"
+
+  # Default labeling
+  labeling:
+    type: "fixed_horizon"
+    horizon: 120
+    price_col: "close"
+
+  # Default metrics
+  metrics:
+    - type: "total_return"
+    - type: "balance_allocation"
+    - type: "drawdown"
+    - type: "win_rate"
+    - type: "sharpe_ratio"
+
+  # Default exit rules
+  exit_rules:
+    - type: "tp_sl"
+      take_profit_pct: 0.02
+      stop_loss_pct: 0.01
+
+# === Output directories ===
+output:
+  signals: "data/08_reporting/{flow_id}/signals"
+  strategy: "data/08_reporting/{flow_id}/strategy"
+  db: "data/07_model_output/strategy_{flow_id}.duckdb"

@@ -1,0 +1,43 @@
+grid_store_path:
+  type: kedro_datasets.text.TextDataset
+  filepath: data/01_raw/store_path.txt
+
+grid_raw_data:
+  type: pickle.PickleDataset
+  filepath: data/02_intermediate/grid/raw_data.pkl
+
+grid_signals:
+  type: pickle.PickleDataset
+  filepath: data/03_primary/grid/signals.pkl
+
+grid_labels:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/grid/labels.pkl
+
+grid_signal_metrics_results:
+  type: pickle.PickleDataset
+  filepath: data/05_model_input/grid/signal_metrics_results.pkl
+
+grid_signal_plots:
+  type: pickle.PickleDataset
+  filepath: data/08_reporting/grid/signal_plots.pkl
+
+grid_backtest_results:
+  type: pickle.PickleDataset
+  filepath: data/07_model_output/grid/backtest_results.pkl
+
+grid_backtest_state:
+  type: pickle.PickleDataset
+  filepath: data/07_model_output/grid/backtest_state.pkl
+
+grid_backtest_metrics:
+  type: pickle.PickleDataset
+  filepath: data/08_reporting/grid/backtest_metrics.pkl
+
+grid_strategy_metrics_results:
+  type: pickle.PickleDataset
+  filepath: data/08_reporting/grid/strategy_metrics_results.pkl
+
+grid_strategy_plots:
+  type: pickle.PickleDataset
+  filepath: data/08_reporting/grid/strategy_plots.pkl

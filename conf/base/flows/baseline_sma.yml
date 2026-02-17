@@ -1,0 +1,34 @@
+# Baseline Strategy with SMA Crossover
+# Run: kedro run --pipeline=backtest --params='flow_id:baseline_sma'
+
+flow_id: baseline_sma
+flow_name: "Baseline SMA Crossover"
+description: "Simple single-position strategy with SMA cross detector"
+
+# Data config
+data:
+  pairs:
+    - BTCUSDT
+    - ETHUSDT
+    - SOLUSDT
+
+# Signal detector
+detector:
+  type: "example/sma_cross"
+  fast_period: 60
+  slow_period: 720
+  price_col: "close"
+
+# Strategy config
+strategy:
+  strategy_id: "baseline_sma"
+
+  entry_rules:
+    - type: "fixed_size_entry"
+      position_size: 0.01
+      max_positions: 10
+
+  exit_rules:
+    - type: "tp_sl"
+      take_profit_pct: 0.02
+      stop_loss_pct: 0.02

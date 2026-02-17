@@ -1,5 +1,5 @@
 fa_store_path:
-  type: text.TextDataset
+  type: kedro_datasets.text.TextDataset
   filepath: data/01_raw/store_path.txt
 
 fa_raw_data:

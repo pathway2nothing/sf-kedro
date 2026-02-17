@@ -1,0 +1,51 @@
+# Grid Strategy with SMA Crossover
+# Run: kedro run --pipeline=backtest --params='flow_id:grid_sma'
+
+flow_id: grid_sma
+flow_name: "Grid SMA Crossover"
+description: "Signal-based grid strategy with SMA cross detector and price distance filtering"
+
+# Data config (overrides defaults)
+data:
+  pairs:
+    - BTCUSDT
+    - ETHUSDT
+    - SOLUSDT
+    - BNBUSDT
+    - XRPUSDT
+
+# Signal detector
+detector:
+  type: "example/sma_cross"
+  fast_period: 60
+  slow_period: 720
+  price_col: "close"
+
+# Strategy config
+strategy:
+  strategy_id: "grid_sma"
+
+  entry_rules:
+    - type: "signal"
+      base_position_size: 200.0
+      max_positions_per_pair: 5
+      max_total_positions: 25
+      min_probability: 0.0
+      use_probability_sizing: false
+      entry_filters:
+        - type: "price_distance_filter"
+          min_distance_pct: 0.02
+          direction_aware: true
+
+  exit_rules:
+    - type: "tp_sl"
+      take_profit_pct: 0.015
+      stop_loss_pct: 0.01
+
+  # Metrics for tracking
+  metrics:
+    - type: "total_return"
+    - type: "win_rate"
+    - type: "sharpe_ratio"
+    - type: "max_drawdown"
+    - type: "profit_factor"
