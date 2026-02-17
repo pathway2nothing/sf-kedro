@@ -1,5 +1,5 @@
 # Baseline Strategy with SMA Crossover
-# Run: kedro run --pipeline=backtest --params='flow_id:baseline_sma'
+# Run: kedro run --pipeline=backtest --params='flow_id=baseline_sma'
 
 flow_id: baseline_sma
 flow_name: "Baseline SMA Crossover"

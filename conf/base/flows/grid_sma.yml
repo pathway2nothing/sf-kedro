@@ -1,5 +1,5 @@
 # Grid Strategy with SMA Crossover
-# Run: kedro run --pipeline=backtest --params='flow_id:grid_sma'
+# Run: kedro run --pipeline=backtest --params='flow_id=grid_sma'
 
 flow_id: grid_sma
 flow_name: "Grid SMA Crossover"

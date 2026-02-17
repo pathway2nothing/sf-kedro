@@ -1,0 +1,46 @@
+# EMA Trend Following Strategy
+# Run: kedro run --pipeline=backtest --params='flow_id=ema_trend'
+
+flow_id: ema_trend
+flow_name: "EMA Trend Following"
+description: "Trend-following strategy with EMA crossover and longer holding periods"
+
+# Data config
+data:
+  pairs:
+    - BTCUSDT
+    - ETHUSDT
+    - SOLUSDT
+    - BNBUSDT
+    - XRPUSDT
+
+# Signal detector
+detector:
+  type: "example/ema_cross"
+  fast_period: 20
+  slow_period: 50
+  price_col: "close"
+
+# Strategy config
+strategy:
+  strategy_id: "ema_trend"
+
+  entry_rules:
+    - type: "signal"
+      base_position_size: 400.0
+      max_positions_per_pair: 2
+      max_total_positions: 10
+      min_probability: 0.0
+      use_probability_sizing: false
+
+  exit_rules:
+    - type: "tp_sl"
+      take_profit_pct: 0.05
+      stop_loss_pct: 0.025
+
+  metrics:
+    - type: "total_return"
+    - type: "win_rate"
+    - type: "sharpe_ratio"
+    - type: "drawdown"
+    - type: "profit_factor"

@@ -1,0 +1,46 @@
+# Bollinger Bands Mean Reversion Strategy
+# Run: kedro run --pipeline=backtest --params='flow_id=bollinger_reversion'
+
+flow_id: bollinger_reversion
+flow_name: "Bollinger Mean Reversion"
+description: "Mean reversion strategy using Bollinger Bands touches"
+
+# Data config
+data:
+  pairs:
+    - BTCUSDT
+    - ETHUSDT
+
+# Signal detector
+detector:
+  type: "example/bollinger_touch"
+  period: 20
+  std_dev: 2.0
+  price_col: "close"
+
+# Strategy config
+strategy:
+  strategy_id: "bollinger_reversion"
+
+  entry_rules:
+    - type: "signal"
+      base_position_size: 200.0
+      max_positions_per_pair: 4
+      max_total_positions: 8
+      min_probability: 0.0
+      use_probability_sizing: false
+      entry_filters:
+        - type: "price_distance_filter"
+          min_distance_pct: 0.01
+          direction_aware: true
+
+  exit_rules:
+    - type: "tp_sl"
+      take_profit_pct: 0.02
+      stop_loss_pct: 0.015
+
+  metrics:
+    - type: "total_return"
+    - type: "win_rate"
+    - type: "sharpe_ratio"
+    - type: "drawdown"

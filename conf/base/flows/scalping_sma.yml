@@ -1,0 +1,47 @@
+# Scalping Strategy with Fast SMA
+# Run: kedro run --pipeline=backtest --params='flow_id=scalping_sma'
+
+flow_id: scalping_sma
+flow_name: "Scalping SMA"
+description: "High-frequency scalping with fast SMA crossover and tight stops"
+
+# Data config
+data:
+  pairs:
+    - BTCUSDT
+    - ETHUSDT
+
+# Signal detector - fast periods for scalping
+detector:
+  type: "example/sma_cross"
+  fast_period: 5
+  slow_period: 15
+  price_col: "close"
+
+# Strategy config
+strategy:
+  strategy_id: "scalping_sma"
+
+  entry_rules:
+    - type: "signal"
+      base_position_size: 100.0
+      max_positions_per_pair: 10
+      max_total_positions: 20
+      min_probability: 0.0
+      use_probability_sizing: false
+      entry_filters:
+        - type: "price_distance_filter"
+          min_distance_pct: 0.005
+          direction_aware: true
+
+  exit_rules:
+    - type: "tp_sl"
+      take_profit_pct: 0.008
+      stop_loss_pct: 0.005
+
+  metrics:
+    - type: "total_return"
+    - type: "win_rate"
+    - type: "sharpe_ratio"
+    - type: "drawdown"
+    - type: "profit_factor"

@@ -1,0 +1,49 @@
+# Grid Strategy with RSI Detector
+# Run: kedro run --pipeline=backtest --params='flow_id=grid_rsi'
+
+flow_id: grid_rsi
+flow_name: "Grid RSI"
+description: "Signal-based grid strategy with RSI oversold/overbought detector"
+
+# Data config
+data:
+  pairs:
+    - BTCUSDT
+    - ETHUSDT
+    - SOLUSDT
+
+# Signal detector
+detector:
+  type: "example/rsi_cross"
+  period: 14
+  oversold: 30
+  overbought: 70
+  price_col: "close"
+
+# Strategy config
+strategy:
+  strategy_id: "grid_rsi"
+
+  entry_rules:
+    - type: "signal"
+      base_position_size: 150.0
+      max_positions_per_pair: 7
+      max_total_positions: 21
+      min_probability: 0.0
+      use_probability_sizing: false
+      entry_filters:
+        - type: "price_distance_filter"
+          min_distance_pct: 0.025
+          direction_aware: true
+
+  exit_rules:
+    - type: "tp_sl"
+      take_profit_pct: 0.02
+      stop_loss_pct: 0.012
+
+  metrics:
+    - type: "total_return"
+    - type: "win_rate"
+    - type: "sharpe_ratio"
+    - type: "drawdown"
+    - type: "profit_factor"

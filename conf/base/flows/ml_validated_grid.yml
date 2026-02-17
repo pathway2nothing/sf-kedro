@@ -1,0 +1,63 @@
+# ML-Validated Grid Strategy
+# Run: kedro run --pipeline=backtest --params='flow_id=ml_validated_grid'
+# Note: Requires trained validator model
+
+flow_id: ml_validated_grid
+flow_name: "ML-Validated Grid"
+description: "Grid strategy with ML signal validation for improved accuracy"
+
+# Data config
+data:
+  pairs:
+    - BTCUSDT
+    - ETHUSDT
+    - SOLUSDT
+
+# Signal detector
+detector:
+  type: "example/sma_cross"
+  fast_period: 60
+  slow_period: 720
+  price_col: "close"
+
+# ML Validator config (for train pipeline)
+# Available: validator/lightgbm, validator/random_forest, validator/xgboost, validator/svm
+validator:
+  type: "validator/lightgbm"
+  n_estimators: 100
+  max_depth: 10
+
+# Labeling config (for train pipeline)
+labeling:
+  type: "fixed_horizon"
+  horizon: 24
+  out_col: "label"
+  price_col: "close"
+
+# Strategy config
+strategy:
+  strategy_id: "ml_validated_grid"
+
+  entry_rules:
+    - type: "signal"
+      base_position_size: 200.0
+      max_positions_per_pair: 5
+      max_total_positions: 15
+      min_probability: 0.6  # Only enter if validator probability > 60%
+      use_probability_sizing: true
+      entry_filters:
+        - type: "price_distance_filter"
+          min_distance_pct: 0.02
+          direction_aware: true
+
+  exit_rules:
+    - type: "tp_sl"
+      take_profit_pct: 0.02
+      stop_loss_pct: 0.012
+
+  metrics:
+    - type: "total_return"
+    - type: "win_rate"
+    - type: "sharpe_ratio"
+    - type: "drawdown"
+    - type: "profit_factor"

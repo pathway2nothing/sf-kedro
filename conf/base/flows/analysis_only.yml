@@ -1,0 +1,29 @@
+# Analysis-Only Flow (No Strategy)
+# Run: kedro run --pipeline=analyze --params='flow_id=analysis_only'
+# Purpose: Signal quality analysis without backtesting
+
+flow_id: analysis_only
+flow_name: "Signal Analysis"
+description: "Detector configuration for signal quality analysis without strategy"
+
+# Data config - broader date range for analysis
+data:
+  pairs:
+    - BTCUSDT
+    - ETHUSDT
+    - SOLUSDT
+    - BNBUSDT
+    - XRPUSDT
+    - ADAUSDT
+    - DOGEUSDT
+    - MATICUSDT
+
+# Signal detector
+detector:
+  type: "example/sma_cross"
+  fast_period: 60
+  slow_period: 720
+  price_col: "close"
+
+# No strategy - this flow is for analysis only
+# Use with: kedro run --pipeline=analyze --params='flow_id=analysis_only,level=all'

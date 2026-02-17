@@ -1,5 +1,5 @@
 # RSI Momentum Strategy
-# Run: kedro run --pipeline=backtest --params='flow_id:rsi_momentum'
+# Run: kedro run --pipeline=backtest --params='flow_id=rsi_momentum'
 
 flow_id: rsi_momentum
 flow_name: "RSI Momentum"

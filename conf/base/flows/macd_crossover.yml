@@ -1,0 +1,46 @@
+# MACD Crossover Strategy
+# Run: kedro run --pipeline=backtest --params='flow_id=macd_crossover'
+
+flow_id: macd_crossover
+flow_name: "MACD Crossover"
+description: "Trend-following strategy using MACD signal line crossover"
+
+# Data config
+data:
+  pairs:
+    - BTCUSDT
+    - ETHUSDT
+    - SOLUSDT
+    - BNBUSDT
+
+# Signal detector
+detector:
+  type: "example/macd_cross"
+  fast_period: 12
+  slow_period: 26
+  signal_period: 9
+  price_col: "close"
+
+# Strategy config
+strategy:
+  strategy_id: "macd_crossover"
+
+  entry_rules:
+    - type: "signal"
+      base_position_size: 250.0
+      max_positions_per_pair: 3
+      max_total_positions: 12
+      min_probability: 0.0
+      use_probability_sizing: false
+
+  exit_rules:
+    - type: "tp_sl"
+      take_profit_pct: 0.03
+      stop_loss_pct: 0.02
+
+  metrics:
+    - type: "total_return"
+    - type: "win_rate"
+    - type: "sharpe_ratio"
+    - type: "drawdown"
+    - type: "profit_factor"
