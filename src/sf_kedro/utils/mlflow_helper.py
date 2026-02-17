@@ -6,6 +6,7 @@ This module provides wrapper functions for MLflow operations that:
 - Gracefully handle import errors
 """
 
+import contextlib
 import os
 from typing import Any
 
@@ -39,11 +40,8 @@ def log_params(params: dict[str, Any]) -> None:
     if mlflow is None:
         return
 
-    try:
+    with contextlib.suppress(Exception):
         mlflow.log_params(params)
-    except Exception:
-        # Silently ignore MLflow errors
-        pass
 
 
 def log_param(key: str, value: Any) -> None:
@@ -58,10 +56,8 @@ def log_param(key: str, value: Any) -> None:
     if mlflow is None:
         return
 
-    try:
+    with contextlib.suppress(Exception):
         mlflow.log_param(key, value)
-    except Exception:
-        pass
 
 
 def log_metrics(metrics: dict[str, float]) -> None:
@@ -75,10 +71,8 @@ def log_metrics(metrics: dict[str, float]) -> None:
     if mlflow is None:
         return
 
-    try:
+    with contextlib.suppress(Exception):
         mlflow.log_metrics(metrics)
-    except Exception:
-        pass
 
 
 def log_metric(key: str, value: float, step: int | None = None) -> None:
@@ -157,10 +151,8 @@ def set_tag(key: str, value: Any) -> None:
     if mlflow is None:
         return
 
-    try:
+    with contextlib.suppress(Exception):
         mlflow.set_tag(key, value)
-    except Exception:
-        pass
 
 
 def set_tags(tags: dict[str, Any]) -> None:
@@ -174,7 +166,5 @@ def set_tags(tags: dict[str, Any]) -> None:
     if mlflow is None:
         return
 
-    try:
+    with contextlib.suppress(Exception):
         mlflow.set_tags(tags)
-    except Exception:
-        pass

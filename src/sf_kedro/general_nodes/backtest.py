@@ -1,10 +1,8 @@
 """Backtesting utilities."""
 
-
-from loguru import logger
-
 import signalflow as sf
-from signalflow.analytic.strategy import *
+from loguru import logger
+from signalflow.analytic.strategy import *  # noqa: F403
 
 
 def run_backtest(
@@ -29,9 +27,7 @@ def run_backtest(
     from signalflow.strategy.runner import OptimizedBacktestRunner
 
     # Create components
-    strategy_store = DuckDbStrategyStore(
-        strategy_config.get("db_path", "strategy.duckdb")
-    )
+    strategy_store = DuckDbStrategyStore(strategy_config.get("db_path", "strategy.duckdb"))
     strategy_store.init()
 
     executor = VirtualSpotExecutor(
@@ -44,29 +40,17 @@ def run_backtest(
     entry_rules = []
     for rule_config in strategy_config.get("entry_rules", []):
         rule_type = rule_config.pop("type")
-        entry_rules.append(
-            sf.get_component(
-                type=sf.SfComponentType.STRATEGY_ENTRY_RULE, name=rule_type
-            )(**rule_config)
-        )
+        entry_rules.append(sf.get_component(type=sf.SfComponentType.STRATEGY_ENTRY_RULE, name=rule_type)(**rule_config))
 
     exit_rules = []
     for rule_config in strategy_config.get("exit_rules", []):
         rule_type = rule_config.pop("type")
-        exit_rules.append(
-            sf.get_component(
-                type=sf.SfComponentType.STRATEGY_EXIT_RULE, name=rule_type
-            )(**rule_config)
-        )
+        exit_rules.append(sf.get_component(type=sf.SfComponentType.STRATEGY_EXIT_RULE, name=rule_type)(**rule_config))
 
     metrics = []
     for metric_config in strategy_config.get("metrics", []):
         metric_type = metric_config.pop("type")
-        metrics.append(
-            sf.get_component(type=sf.SfComponentType.STRATEGY_METRIC, name=metric_type)(
-                **metric_config
-            )
-        )
+        metrics.append(sf.get_component(type=sf.SfComponentType.STRATEGY_METRIC, name=metric_type)(**metric_config))
 
     initial_capital = strategy_config.get("initial_capital", 100000)
 

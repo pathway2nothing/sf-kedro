@@ -33,10 +33,7 @@ class TelegramNotifier:
             chat_id: Channel ID (e.g., "@my_channel" or "-100123456789")
         """
         if not TELEBOT_AVAILABLE:
-            raise ImportError(
-                "pyTelegramBotAPI is not installed. "
-                "Install it with: pip install pyTelegramBotAPI"
-            )
+            raise ImportError("pyTelegramBotAPI is not installed. Install it with: pip install pyTelegramBotAPI")
 
         self.bot_token = bot_token or os.getenv("TELEGRAM_BOT_TOKEN")
         self.chat_id = chat_id or os.getenv("TELEGRAM_CHAT_ID")
@@ -69,9 +66,7 @@ class TelegramNotifier:
         try:
             # Save to BytesIO instead of temp file
             img_bytes = BytesIO()
-            fig.write_image(
-                img_bytes, format="png", width=width, height=height, scale=2
-            )
+            fig.write_image(img_bytes, format="png", width=width, height=height, scale=2)
             img_bytes.seek(0)
 
             self.bot.send_photo(
@@ -120,35 +115,23 @@ class TelegramNotifier:
                 # Create media group
                 for i, fig in enumerate(chunk):
                     img_bytes = BytesIO()
-                    fig.write_image(
-                        img_bytes, format="png", width=width, height=height, scale=2
-                    )
+                    fig.write_image(img_bytes, format="png", width=width, height=height, scale=2)
                     img_bytes.seek(0)
 
                     # First image gets caption
                     caption = None
                     if i == 0:
                         if total_chunks > 1:
-                            caption = (
-                                f"<b>{metric_name}</b>\n"
-                                f"Part {chunk_idx + 1}/{total_chunks}"
-                            )
+                            caption = f"<b>{metric_name}</b>\nPart {chunk_idx + 1}/{total_chunks}"
                         else:
                             caption = f"<b>{metric_name}</b>"
 
-                    media_group.append(
-                        InputMediaPhoto(
-                            media=img_bytes, caption=caption, parse_mode="HTML"
-                        )
-                    )
+                    media_group.append(InputMediaPhoto(media=img_bytes, caption=caption, parse_mode="HTML"))
 
                 # Send media group
                 self.bot.send_media_group(chat_id=self.chat_id, media=media_group)
 
-                logger.info(
-                    f"Sent {len(chunk)} plots for {metric_name} "
-                    f"(part {chunk_idx + 1}/{total_chunks})"
-                )
+                logger.info(f"Sent {len(chunk)} plots for {metric_name} (part {chunk_idx + 1}/{total_chunks})")
 
             except Exception as e:
                 logger.error(f"Failed to send media group for {metric_name}: {e}")
@@ -194,9 +177,7 @@ class TelegramNotifier:
                 logger.warning(f"Skipping {metric_name}: empty list")
                 continue
 
-            logger.info(
-                f"Sending metric {idx}/{total_metrics}: {metric_name} ({len(figures)} plots)"
-            )
+            logger.info(f"Sending metric {idx}/{total_metrics}: {metric_name} ({len(figures)} plots)")
 
             # Send as group if multiple plots, single if just one
             if len(figures) == 1:
@@ -207,9 +188,7 @@ class TelegramNotifier:
                     height=height,
                 )
             else:
-                self.send_plots_group(
-                    figures=figures, metric_name=metric_name, width=width, height=height
-                )
+                self.send_plots_group(figures=figures, metric_name=metric_name, width=width, height=height)
 
         logger.info(f"Completed sending {total_metrics} metrics to Telegram")
 

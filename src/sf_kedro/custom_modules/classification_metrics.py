@@ -6,6 +6,7 @@ from typing import Any
 import numpy as np
 import plotly.graph_objects as go
 import polars as pl
+import signalflow as sf
 from loguru import logger
 from plotly.subplots import make_subplots
 from sklearn.metrics import (
@@ -15,8 +16,6 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
 )
-
-import signalflow as sf
 
 
 @dataclass
@@ -83,9 +82,7 @@ class SignalClassificationMetric(sf.analytic.SignalMetric):
 
         signals_df = signals.value
 
-        signals_with_labels = signals_df.join(
-            labels, on=["timestamp", "pair"], how="inner"
-        )
+        signals_with_labels = signals_df.join(labels, on=["timestamp", "pair"], how="inner")
 
         predictions = signals_with_labels.filter(pl.col("signal") != 0)
 
@@ -105,9 +102,7 @@ class SignalClassificationMetric(sf.analytic.SignalMetric):
 
         y_pred_binary = (y_pred > 0).astype(int)
 
-        logger.info(
-            f"After conversion - Unique y_true: {np.unique(y_true)}, y_pred: {np.unique(y_pred_binary)}"
-        )
+        logger.info(f"After conversion - Unique y_true: {np.unique(y_true)}, y_pred: {np.unique(y_pred_binary)}")
 
         if "strength" in predictions.columns:
             strengths = predictions["strength"].to_numpy()
@@ -118,9 +113,7 @@ class SignalClassificationMetric(sf.analytic.SignalMetric):
             logger.warning("All strengths are identical, ROC curve will be degenerate")
             roc_scores = y_pred_binary.astype(float)
         else:
-            roc_scores = (strengths - strengths.min()) / (
-                strengths.max() - strengths.min()
-            )
+            roc_scores = (strengths - strengths.min()) / (strengths.max() - strengths.min())
 
         try:
             cm = confusion_matrix(y_true, y_pred_binary)
@@ -176,11 +169,7 @@ class SignalClassificationMetric(sf.analytic.SignalMetric):
 
         strength_mean = float(np.mean(strengths))
         strength_std = float(np.std(strengths)) if len(strengths) > 1 else 0.0
-        strength_quartiles = (
-            np.percentile(strengths, [25, 50, 75]).tolist()
-            if len(strengths) > 0
-            else [0, 0, 0]
-        )
+        strength_quartiles = np.percentile(strengths, [25, 50, 75]).tolist() if len(strengths) > 0 else [0, 0, 0]
 
         computed_metrics = {
             "quant": {
@@ -282,9 +271,7 @@ class SignalClassificationMetric(sf.analytic.SignalMetric):
         cm = metrics["quant"]["confusion_matrix"]
         cm_values = [[cm["tn"], cm["fp"]], [cm["fn"], cm["tp"]]]
         total = sum(cm.values())
-        cm_pcts = [
-            [val / total * 100 if total > 0 else 0 for val in row] for row in cm_values
-        ]
+        cm_pcts = [[val / total * 100 if total > 0 else 0 for val in row] for row in cm_values]
 
         fig.add_trace(
             go.Heatmap(
@@ -329,9 +316,7 @@ class SignalClassificationMetric(sf.analytic.SignalMetric):
                 line=dict(color="#2171b5", width=2.5),
                 fill="tozeroy",
                 fillcolor="rgba(33, 113, 181, 0.1)",
-                hovertemplate=(
-                    "<b>FPR:</b> %{x:.3f}<br><b>TPR:</b> %{y:.3f}<extra></extra>"
-                ),
+                hovertemplate=("<b>FPR:</b> %{x:.3f}<br><b>TPR:</b> %{y:.3f}<extra></extra>"),
             ),
             row=1,
             col=1,
@@ -388,11 +373,7 @@ class SignalClassificationMetric(sf.analytic.SignalMetric):
                 marker_line_width=1,
                 opacity=0.8,
                 histnorm="probability density",
-                hovertemplate=(
-                    "<b>Strength:</b> %{x:.3f}<br>"
-                    "<b>Density:</b> %{y:.4f}"
-                    "<extra></extra>"
-                ),
+                hovertemplate=("<b>Strength:</b> %{x:.3f}<br><b>Density:</b> %{y:.4f}<extra></extra>"),
             ),
             row=2,
             col=1,
@@ -402,7 +383,7 @@ class SignalClassificationMetric(sf.analytic.SignalMetric):
             quartile_colors = ["#d94801", "#8856a7", "#d94801"]
             quartile_names = ["Q1", "Median", "Q3"]
 
-            for q_val, color, name in zip(quartiles, quartile_colors, quartile_names):
+            for q_val, color, name in zip(quartiles, quartile_colors, quartile_names, strict=False):
                 fig.add_vline(
                     x=q_val,
                     line_color=color,
@@ -449,7 +430,7 @@ class SignalClassificationMetric(sf.analytic.SignalMetric):
                     height=32,
                 ),
                 cells=dict(
-                    values=list(zip(*table_data)),
+                    values=list(zip(*table_data, strict=False)),
                     fill_color="#f7fbff",
                     align="left",
                     font=dict(size=11, color="#333333"),

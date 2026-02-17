@@ -4,9 +4,8 @@ from dataclasses import dataclass
 
 import plotly.graph_objects as go
 import polars as pl
-from plotly.subplots import make_subplots
-
 import signalflow as sf
+from plotly.subplots import make_subplots
 
 
 @dataclass
@@ -17,9 +16,7 @@ class StrategyMainResult(sf.analytic.StrategyMetric):
 
     """
 
-    def compute(
-        self, state: StrategyState, prices: dict[str, float], **kwargs
-    ) -> dict[str, float]:
+    def compute(self, state: StrategyState, prices: dict[str, float], **kwargs) -> dict[str, float]:
         """Compute metric values."""
         return {}
 
@@ -38,9 +35,7 @@ class StrategyMainResult(sf.analytic.StrategyMetric):
         ts = metrics_df.to_pandas()["timestamp"].to_list()
 
         main_fig = self._plot_main(metrics_df=metrics_df, ts=ts, results=results)
-        detailed_fig = self._plot_detailed(
-            metrics_df=metrics_df, ts=ts, results=results
-        )
+        detailed_fig = self._plot_detailed(metrics_df=metrics_df, ts=ts, results=results)
 
         # повертаємо список, щоб ти міг зберегти/показати обидва
         figs: list[go.Figure] = [main_fig]
@@ -48,9 +43,7 @@ class StrategyMainResult(sf.analytic.StrategyMetric):
             figs.append(detailed_fig)
         return figs
 
-    def _plot_main(
-        self, *, metrics_df: pl.DataFrame, ts: list, results: dict
-    ) -> go.Figure:
+    def _plot_main(self, *, metrics_df: pl.DataFrame, ts: list, results: dict) -> go.Figure:
         fig = make_subplots(
             rows=3,
             cols=1,
@@ -114,14 +107,10 @@ class StrategyMainResult(sf.analytic.StrategyMetric):
         if "cash" in metrics_df.columns and "equity" in metrics_df.columns:
             cash = metrics_df.get_column("cash").to_list()
             equity = metrics_df.get_column("equity").to_list()
-            initial_capital = results.get(
-                "initial_capital", equity[0] if equity else 10000
-            )
+            initial_capital = results.get("initial_capital", equity[0] if equity else 10000)
 
-            allocated_pct = [
-                (eq - c) / eq if eq > 0 else 0.0 for eq, c in zip(equity, cash)
-            ]
-            free_pct = [c / eq if eq > 0 else 0.0 for eq, c in zip(equity, cash)]
+            allocated_pct = [(eq - c) / eq if eq > 0 else 0.0 for eq, c in zip(equity, cash, strict=False)]
+            free_pct = [c / eq if eq > 0 else 0.0 for eq, c in zip(equity, cash, strict=False)]
             total_balance_pct = [(eq / initial_capital - 1.0) * 100.0 for eq in equity]
 
             fig.add_trace(
@@ -165,9 +154,7 @@ class StrategyMainResult(sf.analytic.StrategyMetric):
                 col=1,
             )
 
-            fig.update_yaxes(
-                title_text="Allocation", row=3, col=1, tickformat=".0%", range=[0, 1]
-            )
+            fig.update_yaxes(title_text="Allocation", row=3, col=1, tickformat=".0%", range=[0, 1])
             fig.update_layout(
                 yaxis4=dict(
                     title="Total Return (%)",
@@ -191,9 +178,7 @@ class StrategyMainResult(sf.analytic.StrategyMetric):
         fig.update_yaxes(title_text="Count", row=2, col=1)
         return fig
 
-    def _plot_detailed(
-        self, *, metrics_df: pl.DataFrame, ts: list, results: dict
-    ) -> go.Figure | None:
+    def _plot_detailed(self, *, metrics_df: pl.DataFrame, ts: list, results: dict) -> go.Figure | None:
         # робимо тільки якщо є релевантні колонки
         has_dd = "current_drawdown" in metrics_df.columns
         has_util = "capital_utilization" in metrics_df.columns
@@ -266,16 +251,15 @@ class StrategyMainResult(sf.analytic.StrategyMetric):
         return fig
 
 
-import bisect
-import datetime as dt
-from dataclasses import dataclass, field
-from typing import Any
+import bisect  # noqa: E402
+import datetime as dt  # noqa: E402
+from dataclasses import dataclass, field  # noqa: E402
+from typing import Any  # noqa: E402
 
-from loguru import logger
-
-from signalflow import RawData
-from signalflow.analytic.base import StrategyMetric
-from signalflow.core import StrategyState, sf_component
+from loguru import logger  # noqa: E402
+from signalflow import RawData  # noqa: E402
+from signalflow.analytic.base import StrategyMetric  # noqa: E402
+from signalflow.core import StrategyState, sf_component  # noqa: E402
 
 
 @dataclass
@@ -303,9 +287,7 @@ class StrategyPairResult(StrategyMetric):
     template: str = "plotly_white"
     hovermode: str = "x unified"
 
-    def compute(
-        self, state: StrategyState, prices: dict[str, float], **kwargs
-    ) -> dict[str, float]:
+    def compute(self, state: StrategyState, prices: dict[str, float], **kwargs) -> dict[str, float]:
         return {}
 
     def plot(
@@ -343,14 +325,10 @@ class StrategyPairResult(StrategyMetric):
             return None
 
         if self.ts_col not in df.columns:
-            logger.warning(
-                f"StrategyPairResult: ts_col='{self.ts_col}' not found for pair={pair}"
-            )
+            logger.warning(f"StrategyPairResult: ts_col='{self.ts_col}' not found for pair={pair}")
             return None
         if self.price_col not in df.columns:
-            logger.warning(
-                f"StrategyPairResult: price_col='{self.price_col}' not found for pair={pair}"
-            )
+            logger.warning(f"StrategyPairResult: price_col='{self.price_col}' not found for pair={pair}")
             return None
 
         ts_dt, ts_s, price = self._normalize_timeseries(df=df)
@@ -403,9 +381,7 @@ class StrategyPairResult(StrategyMetric):
                 if p0 is not None:
                     entry_x.append(x0)
                     entry_y.append(p0)
-                    entry_cd.append(
-                        [tid, size, dt.datetime.utcfromtimestamp(et).isoformat()]
-                    )
+                    entry_cd.append([tid, size, dt.datetime.utcfromtimestamp(et).isoformat()])
 
                 deltas[et] = deltas.get(et, 0.0) + size
 
@@ -415,9 +391,7 @@ class StrategyPairResult(StrategyMetric):
                 if p1 is not None:
                     exit_x.append(x1)
                     exit_y.append(p1)
-                    exit_cd.append(
-                        [tid, size, dt.datetime.utcfromtimestamp(xt).isoformat()]
-                    )
+                    exit_cd.append([tid, size, dt.datetime.utcfromtimestamp(xt).isoformat()])
 
                 deltas[xt] = deltas.get(xt, 0.0) - size
 
@@ -476,11 +450,7 @@ class StrategyPairResult(StrategyMetric):
                     marker=dict(size=10, symbol="triangle-down", color="red"),
                     customdata=exit_cd,
                     hovertemplate=(
-                        "Exit<br>"
-                        "id=%{customdata[0]}<br>"
-                        "size=%{customdata[1]}<br>"
-                        "ts=%{customdata[2]}<br>"
-                        "<extra></extra>"
+                        "Exit<br>id=%{customdata[0]}<br>size=%{customdata[1]}<br>ts=%{customdata[2]}<br><extra></extra>"
                     ),
                 ),
                 row=1,
@@ -512,9 +482,7 @@ class StrategyPairResult(StrategyMetric):
 
         return self._finalize_fig(fig)
 
-    def _get_pair_df(
-        self, *, raw_data: RawData | None, pair: str
-    ) -> pl.DataFrame | None:
+    def _get_pair_df(self, *, raw_data: RawData | None, pair: str) -> pl.DataFrame | None:
         if raw_data is None:
             return None
         spot = raw_data.get("spot")
@@ -524,9 +492,7 @@ class StrategyPairResult(StrategyMetric):
             return spot
         return spot.filter(pl.col(self.pair_col) == pair)
 
-    def _normalize_timeseries(
-        self, *, df: pl.DataFrame
-    ) -> tuple[list[dt.datetime], list[int], list[float]]:
+    def _normalize_timeseries(self, *, df: pl.DataFrame) -> tuple[list[dt.datetime], list[int], list[float]]:
         """
         Returns:
           - ts_dt: list[datetime] (UTC)
@@ -554,9 +520,7 @@ class StrategyPairResult(StrategyMetric):
 
         return ts_dt_list, [int(t) for t in ts_s_list], [float(p) for p in price_list]
 
-    def _extract_trades(
-        self, *, state: StrategyState, pair: str
-    ) -> list[dict[str, Any]]:
+    def _extract_trades(self, *, state: StrategyState, pair: str) -> list[dict[str, Any]]:
         """
         Must return trades with UNIQUE entry ids.
         Exit timestamps may coincide for multiple trades.
@@ -577,11 +541,7 @@ class StrategyPairResult(StrategyMetric):
             pid = getattr(p, "id", None)
 
             entry_time = getattr(p, "entry_time", None)
-            exit_time = (
-                getattr(p, "last_time", None)
-                if getattr(p, "is_closed", False)
-                else None
-            )
+            exit_time = getattr(p, "last_time", None) if getattr(p, "is_closed", False) else None
 
             entry_ts = self._to_epoch(entry_time)
             exit_ts = self._to_epoch(exit_time)
@@ -603,9 +563,7 @@ class StrategyPairResult(StrategyMetric):
 
         return out
 
-    def _nearest_price(
-        self, *, epoch_s: int, ts_s: list[int], price: list[float]
-    ) -> float | None:
+    def _nearest_price(self, *, epoch_s: int, ts_s: list[int], price: list[float]) -> float | None:
         if epoch_s is None or not ts_s:
             return None
         i = bisect.bisect_left(ts_s, int(epoch_s))

@@ -1,8 +1,6 @@
 """Validator creation and loading."""
 
-
 import mlflow
-
 import signalflow as sf
 
 
@@ -25,9 +23,7 @@ def create_sklearn_validator(
     from signalflow.validator import SklearnSignalValidator
 
     train_df = train_data["full"]
-    feature_cols = [
-        col for col in train_df.columns if col not in ["timestamp", "pair", "label"]
-    ]
+    feature_cols = [col for col in train_df.columns if col not in ["timestamp", "pair", "label"]]
 
     X_train = train_df.select(feature_cols)
     y_train = train_df.select("label")
@@ -54,9 +50,7 @@ def create_sklearn_validator(
     y_pred = validator.model.predict(X_val.to_pandas())
     val_accuracy = accuracy_score(y_val.to_pandas(), y_pred)
 
-    mlflow.log_params(
-        {"model.type": model_type, **{f"model.{k}": v for k, v in model_params.items()}}
-    )
+    mlflow.log_params({"model.type": model_type, **{f"model.{k}": v for k, v in model_params.items()}})
 
     mlflow.log_metrics(
         {
@@ -95,7 +89,6 @@ def create_nn_validator(
     import lightning as L
     from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
     from lightning.pytorch.loggers import MLFlowLogger
-
     from signalflow.nn.validator import TemporalValidator
 
     # Create validator
@@ -103,9 +96,7 @@ def create_nn_validator(
 
     # MLflow logger
     mlf_logger = MLFlowLogger(
-        experiment_name=mlflow.get_experiment(
-            mlflow.active_run().info.experiment_id
-        ).name,
+        experiment_name=mlflow.get_experiment(mlflow.active_run().info.experiment_id).name,
         tracking_uri=mlflow.get_tracking_uri(),
         run_id=mlflow.active_run().info.run_id,
     )
@@ -139,9 +130,7 @@ def create_nn_validator(
 
     def create_dataloader(data_dict, batch_size=32):
         df = data_dict["full"]
-        feature_cols = [
-            col for col in df.columns if col not in ["timestamp", "pair", "label"]
-        ]
+        feature_cols = [col for col in df.columns if col not in ["timestamp", "pair", "label"]]
 
         X = torch.tensor(df.select(feature_cols).to_numpy(), dtype=torch.float32)
         y = torch.tensor(
@@ -152,12 +141,8 @@ def create_nn_validator(
         dataset = TensorDataset(X, y)
         return DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-    train_loader = create_dataloader(
-        train_data, batch_size=trainer_config.get("batch_size", 32)
-    )
-    val_loader = create_dataloader(
-        val_data, batch_size=trainer_config.get("batch_size", 32)
-    )
+    train_loader = create_dataloader(train_data, batch_size=trainer_config.get("batch_size", 32))
+    val_loader = create_dataloader(val_data, batch_size=trainer_config.get("batch_size", 32))
 
     # Train
     trainer.fit(validator, train_loader, val_loader)

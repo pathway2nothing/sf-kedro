@@ -18,7 +18,6 @@ import optuna
 import polars as pl
 from optuna.pruners import HyperbandPruner, MedianPruner
 from optuna.samplers import CmaEsSampler, TPESampler
-
 from signalflow.core import RawData, Signals
 
 logger = logging.getLogger(__name__)
@@ -133,22 +132,19 @@ def tune_validator(
     Returns:
         Tuple of (best_params, trained_validator)
     """
-    from sklearn.metrics import accuracy_score, f1_score
-
     from signalflow.validator import SklearnSignalValidator
+    from sklearn.metrics import accuracy_score, f1_score
 
     n_trials = tuning_config.get("n_trials", 50)
     timeout = tuning_config.get("timeout")
-    validator_type = tuning_config.get("validator_type", "sklearn")
+    tuning_config.get("validator_type", "sklearn")
     model_size = tuning_config.get("model_size", "medium")
     metric = tuning_config.get("metric", "accuracy")
 
     train_df = train_data["full"]
     val_df = val_data["full"]
 
-    feature_cols = [
-        col for col in train_df.columns if col not in ["timestamp", "pair", "label"]
-    ]
+    feature_cols = [col for col in train_df.columns if col not in ["timestamp", "pair", "label"]]
 
     X_train = train_df.select(feature_cols)
     y_train = train_df.select("label")
@@ -247,11 +243,7 @@ def tune_detector(
             params = detector_cls.tune(trial, model_size=model_size)
         else:
             # Fallback to basic parameter suggestions
-            params = (
-                detector_cls.default_params()
-                if hasattr(detector_cls, "default_params")
-                else {}
-            )
+            params = detector_cls.default_params() if hasattr(detector_cls, "default_params") else {}
 
         # Create detector and generate signals
         detector = detector_cls(**params)
@@ -323,11 +315,7 @@ def _evaluate_signals(
     elif metric == "f1":
         precision = _evaluate_signals(signals, labels, "precision")
         recall = _evaluate_signals(signals, labels, "recall")
-        return (
-            2 * precision * recall / (precision + recall)
-            if (precision + recall) > 0
-            else 0.0
-        )
+        return 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
 
     else:
         return 0.0
@@ -400,11 +388,7 @@ def tune_strategy(
             trades_df = runner.trades_df
 
             if trades_df.height == 0:
-                return (
-                    float("-inf")
-                    if study.direction == optuna.study.StudyDirection.MAXIMIZE
-                    else float("inf")
-                )
+                return float("-inf") if study.direction == optuna.study.StudyDirection.MAXIMIZE else float("inf")
 
             # Calculate metric
             if metric == "sharpe":
@@ -428,11 +412,7 @@ def tune_strategy(
 
         except Exception as e:
             logger.warning(f"Trial {trial.number} failed: {e}")
-            return (
-                float("-inf")
-                if study.direction == optuna.study.StudyDirection.MAXIMIZE
-                else float("inf")
-            )
+            return float("-inf") if study.direction == optuna.study.StudyDirection.MAXIMIZE else float("inf")
 
         # Log to MLflow
         mlflow.log_metric(f"strategy_trial_{trial.number}_{metric}", score)
@@ -462,9 +442,7 @@ def tune_strategy(
         stop_loss_pct=best_params["stop_loss_pct"],
     )
 
-    final_broker = BacktestBroker(
-        executor=VirtualSpotExecutor(fee_rate=best_params["fee_rate"])
-    )
+    final_broker = BacktestBroker(executor=VirtualSpotExecutor(fee_rate=best_params["fee_rate"]))
 
     final_runner = BacktestRunner(
         strategy_id="optuna_best",
@@ -601,8 +579,6 @@ def apply_best_params(
         updated_config["fee_rate"] = best_params.get("fee_rate", 0.001)
 
     # Log updated config
-    mlflow.log_params(
-        {f"applied.{component_type}.{k}": v for k, v in best_params.items()}
-    )
+    mlflow.log_params({f"applied.{component_type}.{k}": v for k, v in best_params.items()})
 
     return updated_config

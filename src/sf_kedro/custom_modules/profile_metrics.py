@@ -5,10 +5,9 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import polars as pl
+import signalflow as sf
 from loguru import logger
 from plotly.subplots import make_subplots
-
-import signalflow as sf
 
 
 @dataclass
@@ -71,11 +70,7 @@ class SignalProfileMetric(sf.analytic.SignalMetric):
 
                 if signal_idx + self.look_ahead < len(price_pd):
                     signal_price = price_pd.iloc[signal_idx]["close"]
-                    future_prices = (
-                        price_pd["close"]
-                        .iloc[signal_idx : signal_idx + self.look_ahead + 1]
-                        .values
-                    )
+                    future_prices = price_pd["close"].iloc[signal_idx : signal_idx + self.look_ahead + 1].values
 
                     relative_changes = (future_prices / signal_price) - 1.0
                     post_signal_changes.append(relative_changes)
@@ -84,9 +79,7 @@ class SignalProfileMetric(sf.analytic.SignalMetric):
                     daily_max_uplifts.append(max_uplift)
 
         if not post_signal_changes:
-            logger.warning(
-                "No valid signal sequences found with sufficient future data"
-            )
+            logger.warning("No valid signal sequences found with sufficient future data")
             return None, {}
 
         post_signal_df = pd.DataFrame(post_signal_changes)
@@ -155,10 +148,7 @@ class SignalProfileMetric(sf.analytic.SignalMetric):
             "total_signals": n_signals,
         }
 
-        logger.info(
-            f"Profile computed: {n_signals} signals, "
-            f"final mean: {final_mean:.2f}%, max: {max_mean_pct:.2f}%"
-        )
+        logger.info(f"Profile computed: {n_signals} signals, final mean: {final_mean:.2f}%, max: {max_mean_pct:.2f}%")
 
         return computed_metrics, plots_context
 
@@ -314,8 +304,8 @@ class SignalProfileMetric(sf.analytic.SignalMetric):
         std = metrics["series"]["std_profile"]
 
         key_minutes = [60, 120, 360, 720, 1440]
-        y_min = (mean - std).min()
-        y_max = (mean + std).max()
+        (mean - std).min()
+        (mean + std).max()
 
         for km in key_minutes:
             if km <= len(mean):
@@ -605,16 +595,8 @@ class SignalProfileMetric(sf.analytic.SignalMetric):
             trace.customdata = customdata
 
             if trace.name in row1_trace_names:
-                trace.hovertemplate = (
-                    "Minute: %{x}<br>"
-                    "Change: %{y:.4f}<br>"
-                    "Signals: %{customdata[0]:.0f}"
-                    "<extra></extra>"
-                )
+                trace.hovertemplate = "Minute: %{x}<br>Change: %{y:.4f}<br>Signals: %{customdata[0]:.0f}<extra></extra>"
             elif trace.name in row2_trace_names:
                 trace.hovertemplate = (
-                    "Minute: %{x}<br>"
-                    "Cum Change: %{y:.4f}<br>"
-                    "Signals: %{customdata[0]:.0f}"
-                    "<extra></extra>"
+                    "Minute: %{x}<br>Cum Change: %{y:.4f}<br>Signals: %{customdata[0]:.0f}<extra></extra>"
                 )

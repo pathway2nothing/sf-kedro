@@ -12,10 +12,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 # Import the main script functions
 from run_all_indicators import (
     get_all_indicator_classes,
-    get_test_params,
     get_output_feature_name,
-    update_parameters_file,
+    get_test_params,
     run_feature_analysis_pipeline,
+    update_parameters_file,
 )
 
 
@@ -57,7 +57,7 @@ def main():
     params_file = Path("conf/base/parameters/feature_analysis.yml")
     print(f"\n📄 Updated config file ({params_file}):")
     print("-" * 80)
-    with open(params_file, "r") as f:
+    with open(params_file) as f:
         print(f.read())
     print("-" * 80)
 

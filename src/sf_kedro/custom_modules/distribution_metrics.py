@@ -5,10 +5,9 @@ from typing import Any
 import numpy as np
 import plotly.graph_objects as go
 import polars as pl
+import signalflow as sf
 from loguru import logger
 from plotly.subplots import make_subplots
-
-import signalflow as sf
 
 
 @dataclass
@@ -74,10 +73,7 @@ class SignalDistributionMetric(sf.analytic.SignalMetric):
                 for i in range(actual_n_bars):
                     lower = int(np.floor(bin_edges[i]))
                     upper = int(np.ceil(bin_edges[i + 1]))
-                    if lower == upper:
-                        label = f"{lower}"
-                    else:
-                        label = f"{lower}–{upper}"
+                    label = f"{lower}" if lower == upper else f"{lower}-{upper}"
                     bin_labels.append(label)
 
             binned = np.digitize(signal_counts, bin_edges[:-1]) - 1
@@ -86,9 +82,7 @@ class SignalDistributionMetric(sf.analytic.SignalMetric):
             grouped_data = []
             for i, label in enumerate(bin_labels):
                 mask = binned == i
-                pairs_in_bin = signals_per_pair.filter(pl.Series(mask))[
-                    "pair"
-                ].to_list()
+                pairs_in_bin = signals_per_pair.filter(pl.Series(mask))["pair"].to_list()
 
                 if pairs_in_bin:
                     grouped_data.append(
@@ -195,10 +189,7 @@ class SignalDistributionMetric(sf.analytic.SignalMetric):
         """Create subplot structure."""
         use_histogram = plots_context.get("use_histogram", True)
 
-        if use_histogram:
-            title1 = "Pairs Distribution by Signal Count"
-        else:
-            title1 = "Signal Count per Pair"
+        title1 = "Pairs Distribution by Signal Count" if use_histogram else "Signal Count per Pair"
 
         return make_subplots(
             rows=3,
@@ -286,12 +277,7 @@ class SignalDistributionMetric(sf.analytic.SignalMetric):
                 line=dict(color="#e6550d", width=2),
                 marker=dict(size=8 if n_pairs <= 20 else 5, color="#a63603"),
                 text=pairs,
-                hovertemplate=(
-                    "<b>Rank:</b> %{x}<br>"
-                    "<b>Pair:</b> %{text}<br>"
-                    "<b>Signals:</b> %{y}"
-                    "<extra></extra>"
-                ),
+                hovertemplate=("<b>Rank:</b> %{x}<br><b>Pair:</b> %{text}<br><b>Signals:</b> %{y}<extra></extra>"),
                 name="Signal Count",
             ),
             row=2,
@@ -358,9 +344,7 @@ class SignalDistributionMetric(sf.analytic.SignalMetric):
                         mode="lines",
                         line=dict(color="#08519c", width=2.5),
                         hovertemplate=(
-                            "<b>Time:</b> %{x}<br>"
-                            f"<b>{plots_context['ma_window']}h MA:</b> %{{y:.1f}}"
-                            "<extra></extra>"
+                            f"<b>Time:</b> %{{x}}<br><b>{plots_context['ma_window']}h MA:</b> %{{y:.1f}}<extra></extra>"
                         ),
                         name=f"{plots_context['ma_window']}h MA",
                     ),

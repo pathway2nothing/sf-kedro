@@ -21,9 +21,7 @@ class DagsHubHook:
         """Check if MLflow should be used."""
         if not self.mlflow_enabled:
             return False
-        if not self.dagshub_repo:
-            return False
-        return True
+        return self.dagshub_repo
 
     @hook_impl
     def before_pipeline_run(self, run_params: dict[str, Any], pipeline, catalog):
@@ -32,9 +30,9 @@ class DagsHubHook:
         # Skip if MLflow is disabled or repo not configured
         if not self._is_mlflow_enabled():
             if not self.dagshub_repo:
-                print("ℹ️  MLflow: DAGSHUB_REPO not set, skipping")
+                print("[info] MLflow: DAGSHUB_REPO not set, skipping")
             else:
-                print("ℹ️  MLflow: Disabled via MLFLOW_ENABLED=false")
+                print("[info] MLflow: Disabled via MLFLOW_ENABLED=false")
             return
 
         try:
@@ -88,9 +86,7 @@ class DagsHubHook:
             print(f"✓ Run: {run_name}")
 
         except ImportError as e:
-            print(
-                f"⚠️  MLflow: Dependencies not available ({e}), continuing without tracking"
-            )
+            print(f"⚠️  MLflow: Dependencies not available ({e}), continuing without tracking")
             self.mlflow_available = False
         except Exception as e:
             print(f"⚠️  MLflow: Failed to initialize ({e}), continuing without tracking")
@@ -113,9 +109,7 @@ class DagsHubHook:
             print(f"⚠️  MLflow: Error ending run: {e}")
 
     @hook_impl
-    def on_pipeline_error(
-        self, error: Exception, run_params: dict[str, Any], pipeline, catalog
-    ):
+    def on_pipeline_error(self, error: Exception, run_params: dict[str, Any], pipeline, catalog):
         """Log error and mark run as failed."""
         if not self.mlflow_available:
             return

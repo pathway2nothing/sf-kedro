@@ -6,12 +6,12 @@ from typing import Any
 
 import mlflow
 import plotly.graph_objects as go
-from loguru import logger
-
 import signalflow as sf
-from sf_kedro.custom_modules.strategy_metrics import *
-from sf_kedro.utils.telegram import send_plots_to_telegram
+from loguru import logger
 from signalflow import RawData, StrategyState
+
+from sf_kedro.custom_modules.strategy_metrics import *  # noqa: F403
+from sf_kedro.utils.telegram import send_plots_to_telegram
 
 
 def log_last_state_metrics(backtest_results: dict) -> dict:
@@ -99,11 +99,7 @@ def compute_strategy_metrics(
 
             plots[metric_name] = metric_plots
 
-            n_plots = (
-                len(metric_plots)
-                if isinstance(metric_plots, list)
-                else (1 if metric_plots is not None else 0)
-            )
+            n_plots = len(metric_plots) if isinstance(metric_plots, list) else (1 if metric_plots is not None else 0)
             results["per_metric"][metric_name] = {
                 "n_plots": n_plots,
             }
@@ -122,9 +118,7 @@ def compute_strategy_metrics(
 
     if telegram_config and telegram_config.get("enabled", False):
         try:
-            full_header = (
-                f"Strategy: {strategy_name}" if strategy_name else "Strategy Metrics"
-            )
+            full_header = f"Strategy: {strategy_name}" if strategy_name else "Strategy Metrics"
             send_plots_to_telegram(
                 plots=plots,
                 bot_token=telegram_config.get("bot_token"),
@@ -138,9 +132,7 @@ def compute_strategy_metrics(
             if telegram_config.get("raise_on_error", False):
                 raise
 
-    logger.info(
-        f"Successfully computed {len(results.get('per_metric', {}))} strategy metric types"
-    )
+    logger.info(f"Successfully computed {len(results.get('per_metric', {}))} strategy metric types")
     return results, plots
 
 
@@ -241,9 +233,7 @@ def _log_metrics_to_mlflow(
                 html_path = metric_dir / f"{i}.html"
                 fig.write_html(str(html_path))
 
-            mlflow.log_artifacts(
-                str(metric_dir), artifact_path=f"{artifact_root}/{metric_name}"
-            )
+            mlflow.log_artifacts(str(metric_dir), artifact_path=f"{artifact_root}/{metric_name}")
 
 
 def _log_dict_metrics(prefix: str, obj: Any) -> None:

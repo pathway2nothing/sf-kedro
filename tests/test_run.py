@@ -4,8 +4,9 @@ Tests should be placed in ``src/tests``, in modules that mirror your
 project's structure, and in files named test_*.py.
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
 from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 
@@ -20,8 +21,7 @@ class TestKedroRun:
         # the default project template contains no pipelines.
         bootstrap_project(Path.cwd())
 
-        with pytest.raises(Exception) as excinfo:
-            with KedroSession.create(project_path=Path.cwd()) as session:
-                session.run()
+        with pytest.raises(Exception) as excinfo, KedroSession.create(project_path=Path.cwd()) as session:
+            session.run()
 
         assert "Pipeline contains no nodes" in str(excinfo.value)

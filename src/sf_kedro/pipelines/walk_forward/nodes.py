@@ -27,7 +27,6 @@ from typing import Any
 import mlflow
 import numpy as np
 import polars as pl
-
 from signalflow.core import RawData, Signals
 from signalflow.validator import SklearnSignalValidator
 
@@ -225,21 +224,17 @@ def run_walk_forward_validation(
 
         # Filter data for this window
         train_features = features_df.filter(
-            (pl.col("timestamp") >= window.train_start)
-            & (pl.col("timestamp") < window.train_end)
+            (pl.col("timestamp") >= window.train_start) & (pl.col("timestamp") < window.train_end)
         )
         train_labels = labels_df.filter(
-            (pl.col("timestamp") >= window.train_start)
-            & (pl.col("timestamp") < window.train_end)
+            (pl.col("timestamp") >= window.train_start) & (pl.col("timestamp") < window.train_end)
         )
 
         test_features = features_df.filter(
-            (pl.col("timestamp") >= window.test_start)
-            & (pl.col("timestamp") < window.test_end)
+            (pl.col("timestamp") >= window.test_start) & (pl.col("timestamp") < window.test_end)
         )
         test_signals = signals_df.filter(
-            (pl.col("timestamp") >= window.test_start)
-            & (pl.col("timestamp") < window.test_end)
+            (pl.col("timestamp") >= window.test_start) & (pl.col("timestamp") < window.test_end)
         )
 
         # Skip window if insufficient data
@@ -269,8 +264,7 @@ def run_walk_forward_validation(
         exit_config = strategy_config.get("exit", {})
 
         entry_rule = SignalEntryRule(
-            base_position_size=current_capital
-            * entry_config.get("position_size_pct", 0.1),
+            base_position_size=current_capital * entry_config.get("position_size_pct", 0.1),
             max_positions_per_pair=entry_config.get("max_positions_per_pair", 1),
             max_total_positions=entry_config.get("max_total_positions", 5),
         )
@@ -280,11 +274,7 @@ def run_walk_forward_validation(
             stop_loss_pct=exit_config.get("stop_loss_pct", 0.01),
         )
 
-        broker = BacktestBroker(
-            executor=VirtualSpotExecutor(
-                fee_rate=strategy_config.get("fee_rate", 0.001)
-            )
-        )
+        broker = BacktestBroker(executor=VirtualSpotExecutor(fee_rate=strategy_config.get("fee_rate", 0.001)))
 
         runner = BacktestRunner(
             strategy_id=f"wf_window_{window.window_id}",
@@ -296,9 +286,8 @@ def run_walk_forward_validation(
 
         # Filter raw_data for test period
         view = raw_data.view()
-        test_df = view.to_polars("spot").filter(
-            (pl.col("timestamp") >= window.test_start)
-            & (pl.col("timestamp") < window.test_end)
+        view.to_polars("spot").filter(
+            (pl.col("timestamp") >= window.test_start) & (pl.col("timestamp") < window.test_end)
         )
 
         try:
@@ -312,11 +301,7 @@ def run_walk_forward_validation(
             # Calculate Sharpe for this window
             if trades_df.height > 0:
                 returns = trades_df.select("pnl").to_series() / current_capital
-                sharpe = (
-                    (returns.mean() / returns.std()) * np.sqrt(252)
-                    if returns.std() > 0
-                    else 0
-                )
+                sharpe = (returns.mean() / returns.std()) * np.sqrt(252) if returns.std() > 0 else 0
                 win_rate = trades_df.filter(pl.col("pnl") > 0).height / trades_df.height
             else:
                 sharpe = 0
@@ -337,9 +322,7 @@ def run_walk_forward_validation(
 
             # Track trades and equity
             if trades_df.height > 0:
-                trades_df = trades_df.with_columns(
-                    pl.lit(window.window_id).alias("window_id")
-                )
+                trades_df = trades_df.with_columns(pl.lit(window.window_id).alias("window_id"))
                 all_trades.append(trades_df)
 
             # Update capital for next window (compound returns)
@@ -384,18 +367,10 @@ def run_walk_forward_validation(
     all_trades_df = pl.concat(all_trades) if all_trades else pl.DataFrame()
     equity_curve = pl.DataFrame(all_equity_points)
 
-    aggregated_metrics = _aggregate_metrics(
-        window_results, initial_capital, current_capital
-    )
+    aggregated_metrics = _aggregate_metrics(window_results, initial_capital, current_capital)
 
     # Log aggregated metrics to MLflow
-    mlflow.log_metrics(
-        {
-            f"wf.agg.{k}": v
-            for k, v in aggregated_metrics.items()
-            if isinstance(v, (int, float))
-        }
-    )
+    mlflow.log_metrics({f"wf.agg.{k}": v for k, v in aggregated_metrics.items() if isinstance(v, (int, float))})
 
     return WalkForwardResult(
         windows=windows,
@@ -422,9 +397,7 @@ def _train_validator(
     if train_df.height == 0:
         raise ValueError("No training data after joining features and labels")
 
-    feature_cols = [
-        col for col in train_df.columns if col not in ["timestamp", "pair", "label"]
-    ]
+    feature_cols = [col for col in train_df.columns if col not in ["timestamp", "pair", "label"]]
 
     X_train = train_df.select(feature_cols)
     y_train = train_df.select("label")
@@ -463,9 +436,7 @@ def _aggregate_metrics(
 
     # Average per-window metrics
     sharpes = [r["sharpe"] for r in window_results if r.get("sharpe")]
-    returns = [
-        r["total_return"] for r in window_results if r.get("total_return") is not None
-    ]
+    returns = [r["total_return"] for r in window_results if r.get("total_return") is not None]
     win_rates = [r["win_rate"] for r in window_results if r.get("win_rate")]
     n_trades = sum(r.get("n_trades", 0) for r in window_results)
 
@@ -479,8 +450,7 @@ def _aggregate_metrics(
 
     return {
         "total_return": total_return,
-        "annualized_return": total_return
-        * (365 / (len(window_results) * 14)),  # Approximate
+        "annualized_return": total_return * (365 / (len(window_results) * 14)),  # Approximate
         "sharpe_avg": np.mean(sharpes) if sharpes else 0,
         "sharpe_std": np.std(sharpes) if sharpes else 0,
         "sharpe_aggregate": aggregate_sharpe,

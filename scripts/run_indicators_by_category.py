@@ -7,24 +7,24 @@ Categories: momentum, volatility, volume, trend, overlap, stat, divergence
 
 import sys
 from pathlib import Path
-from typing import List
 
 # Add current directory to path
 sys.path.insert(0, str(Path(__file__).parent))
 
 # Import the main script functions
-from run_all_indicators import (
-    get_all_indicator_classes,
-    get_test_params,
-    get_output_feature_name,
-    update_parameters_file,
-    run_feature_analysis_pipeline,
-    read_latest_stats,
-    generate_consolidated_report,
-)
 import time
 from datetime import datetime
+
 import yaml
+from run_all_indicators import (
+    generate_consolidated_report,
+    get_all_indicator_classes,
+    get_output_feature_name,
+    get_test_params,
+    read_latest_stats,
+    run_feature_analysis_pipeline,
+    update_parameters_file,
+)
 
 
 def list_categories():
@@ -33,10 +33,7 @@ def list_categories():
 
     categories = {}
     for registry_name, _ in indicators:
-        if "/" in registry_name:
-            category = registry_name.split("/")[0]
-        else:
-            category = "other"
+        category = registry_name.split("/")[0] if "/" in registry_name else "other"
 
         if category not in categories:
             categories[category] = []
@@ -52,7 +49,7 @@ def list_categories():
     return categories
 
 
-def filter_by_category(category: str) -> List[tuple]:
+def filter_by_category(category: str) -> list[tuple]:
     """
     Filter indicators by category.
 
@@ -78,9 +75,7 @@ def main():
         print("Usage: python3 run_indicators_by_category.py <category>")
         print("       python3 run_indicators_by_category.py --list")
         print()
-        print(
-            "Categories: momentum, volatility, volume, trend, overlap, stat, divergence"
-        )
+        print("Categories: momentum, volatility, volume, trend, overlap, stat, divergence")
         sys.exit(1)
 
     if sys.argv[1] == "--list":
@@ -139,9 +134,7 @@ def main():
 
             if success:
                 print(f"  ✅ Success! (took {elapsed:.1f}s)")
-                results["successful"].append(
-                    {"registry_name": registry_name, "params": params, "time": elapsed}
-                )
+                results["successful"].append({"registry_name": registry_name, "params": params, "time": elapsed})
 
                 # Read and collect statistics
                 stats = read_latest_stats()
@@ -150,9 +143,7 @@ def main():
                     print("  📊 Statistics collected")
             else:
                 print("  ❌ Failed!")
-                results["failed"].append(
-                    {"registry_name": registry_name, "params": params}
-                )
+                results["failed"].append({"registry_name": registry_name, "params": params})
 
         except Exception as e:
             print(f"  ❌ Error: {e}")
@@ -180,18 +171,14 @@ def main():
                 print(f"    Error: {item['error']}")
 
     # Save results to file
-    results_file = Path(
-        f"indicator_analysis_{category}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.yaml"
-    )
+    results_file = Path(f"indicator_analysis_{category}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.yaml")
     with open(results_file, "w") as f:
         yaml.dump(results, f, default_flow_style=False)
     print(f"\n💾 Results saved to: {results_file}")
 
     # Generate consolidated statistics report
     if all_stats:
-        report_file = Path(
-            f"indicator_analysis_{category}_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-        )
+        report_file = Path(f"indicator_analysis_{category}_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
         print(f"\n📊 Generating consolidated report for {category}...")
         generate_consolidated_report(all_stats, report_file)
         print(f"💾 Consolidated report saved to: {report_file}")

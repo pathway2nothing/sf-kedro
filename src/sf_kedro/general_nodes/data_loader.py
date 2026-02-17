@@ -5,7 +5,6 @@ from datetime import datetime
 from pathlib import Path
 
 import mlflow
-
 import signalflow as sf
 
 

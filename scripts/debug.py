@@ -6,9 +6,9 @@ Usage:
     python debug.py --node load_data
 """
 
+import os
 import sys
 from pathlib import Path
-import os
 
 
 # Find the Kedro project root (where pyproject.toml is located)
@@ -47,18 +47,15 @@ print(f"Project root: {project_root}")
 print(f"Working directory: {Path.cwd()}")
 
 import logging
+
 from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 
 # Configure logging for detailed output
-logging.basicConfig(
-    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 
-def run_pipeline(
-    pipeline_name: str = "baseline", node_names: str = None, env: str = "local"
-):
+def run_pipeline(pipeline_name: str = "baseline", node_names: str | None = None, env: str = "local"):
     """Run Kedro pipeline with full debugging enabled.
 
     Args:
@@ -74,7 +71,7 @@ def run_pipeline(
     print(f"{'=' * 60}\n")
 
     try:
-        metadata = bootstrap_project(project_root)
+        bootstrap_project(project_root)
 
         with KedroSession.create(project_path=project_root, env=env) as session:
             if node_names:
@@ -99,7 +96,7 @@ def run_pipeline(
         print(f"\n{'=' * 60}")
         print("Error summary:")
         print(f"Type: {type(e).__name__}")
-        print(f"Message: {str(e)}")
+        print(f"Message: {e!s}")
         print(f"{'=' * 60}\n")
 
         sys.exit(1)

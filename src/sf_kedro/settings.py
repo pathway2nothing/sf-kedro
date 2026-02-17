@@ -9,7 +9,7 @@ if env_file.exists():
     except ImportError:
         pass
 
-from sf_kedro.hooks.dagshub_hooks import DagsHubHook
+from sf_kedro.hooks.dagshub_hooks import DagsHubHook  # noqa: E402
 
 HOOKS = (DagsHubHook(),)
 

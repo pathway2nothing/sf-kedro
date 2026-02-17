@@ -1,9 +1,8 @@
 """Labeling and data splitting."""
 
-
 import polars as pl
-
 import signalflow as sf
+
 from sf_kedro.utils import mlflow_helper
 
 
@@ -25,9 +24,7 @@ def create_labels(
     """
     labeler_name = labeler_config.pop("type")
 
-    labeler = sf.default_registry.get(
-        component_type=sf.SfComponentType.LABELER, name=labeler_name
-    )(**labeler_config)
+    labeler = sf.default_registry.get(component_type=sf.SfComponentType.LABELER, name=labeler_name)(**labeler_config)
 
     raw_df = raw_data.get("spot")
     labeled_df = labeler.compute(df=raw_df, signals=signals)

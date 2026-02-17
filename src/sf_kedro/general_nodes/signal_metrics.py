@@ -6,12 +6,12 @@ from typing import Any
 import mlflow
 import plotly.graph_objects as go
 import polars as pl
-from loguru import logger
-
 import signalflow as sf
-from sf_kedro.custom_modules import *
+from loguru import logger
+from signalflow.analytic.signals import *  # noqa: F403
+
+from sf_kedro.custom_modules import *  # noqa: F403
 from sf_kedro.utils.telegram import send_plots_to_telegram
-from signalflow.analytic.signals import *
 
 
 def compute_signal_metrics(
@@ -41,9 +41,7 @@ def compute_signal_metrics(
     metrics: list[sf.analytic.SignalMetric] = []
     for metric_type, metric_params in params.items():
         logger.debug(f"Loading metric processor: {metric_type}")
-        metric_processor = sf.get_component(
-            type=sf.SfComponentType.SIGNAL_METRIC, name=metric_type
-        )(**metric_params)
+        metric_processor = sf.get_component(type=sf.SfComponentType.SIGNAL_METRIC, name=metric_type)(**metric_params)
         metrics.append(metric_processor)
 
     plots = {}
@@ -63,17 +61,10 @@ def compute_signal_metrics(
             plots[metric_name] = metric_plots
             results[metric_name] = computed_metrics
 
-            n_plots = (
-                len(metric_plots)
-                if isinstance(metric_plots, list)
-                else (1 if metric_plots else 0)
-            )
+            n_plots = len(metric_plots) if isinstance(metric_plots, list) else (1 if metric_plots else 0)
             n_metrics = len(computed_metrics) if computed_metrics else 0
 
-            logger.info(
-                f"Metric {metric_name}: computed {n_metrics} entries, "
-                f"generated {n_plots} plots"
-            )
+            logger.info(f"Metric {metric_name}: computed {n_metrics} entries, generated {n_plots} plots")
         except Exception as e:
             logger.error(f"Failed to process metric {metric_name}: {e}")
             plots[metric_name] = None
@@ -88,9 +79,7 @@ def compute_signal_metrics(
     if telegram_config and telegram_config.get("enabled", False):
         logger.info("Preparing Telegram notification")
         try:
-            header_template = telegram_config.get(
-                "header_message", "📊 <b>SignalFlow Metrics Report</b>"
-            )
+            header_template = telegram_config.get("header_message", "📊 <b>SignalFlow Metrics Report</b>")
 
             signals_df = signals.value
             date_min = signals_df["timestamp"].min()
@@ -108,23 +97,15 @@ def compute_signal_metrics(
             # Add summary stats
             summary_lines = [header, ""]
             for metric_name, metric_data in results.items():
-                if (
-                    metric_data
-                    and isinstance(metric_data, dict)
-                    and "quant" in metric_data
-                ):
+                if metric_data and isinstance(metric_data, dict) and "quant" in metric_data:
                     quant = metric_data["quant"]
                     summary_lines.append(f"<b>{metric_name}:</b>")
                     if "n_signals" in quant:
                         summary_lines.append(f"  • Signals: {quant['n_signals']}")
                     if "final_mean" in quant:
-                        summary_lines.append(
-                            f"  • Final Mean: {quant['final_mean']:.2f}%"
-                        )
+                        summary_lines.append(f"  • Final Mean: {quant['final_mean']:.2f}%")
                     if "avg_max_uplift" in quant:
-                        summary_lines.append(
-                            f"  • Avg Max: {quant['avg_max_uplift']:.2f}%"
-                        )
+                        summary_lines.append(f"  • Avg Max: {quant['avg_max_uplift']:.2f}%")
 
             full_header = "\n".join(summary_lines)
 
@@ -186,9 +167,7 @@ def save_signal_plots(
     logger.info(f"Total saved {total_saved} plots to {output_path}")
 
 
-def _log_metrics_to_mlflow(
-    results: dict[str, Any], plots: dict[str, list[go.Figure] | go.Figure | None]
-) -> None:
+def _log_metrics_to_mlflow(results: dict[str, Any], plots: dict[str, list[go.Figure] | go.Figure | None]) -> None:
     """Log computed metrics and plots to MLflow."""
 
     for metric_name, metric_data in results.items():
@@ -220,6 +199,4 @@ def _log_metrics_to_mlflow(
                 html_path = metric_dir / f"{i}.html"
                 fig.write_html(str(html_path))
 
-            mlflow.log_artifacts(
-                str(metric_dir), artifact_path=f"signal_metrics/{metric_name}"
-            )
+            mlflow.log_artifacts(str(metric_dir), artifact_path=f"signal_metrics/{metric_name}")

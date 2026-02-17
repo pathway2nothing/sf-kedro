@@ -1,9 +1,7 @@
 """Signal detection and processing."""
 
-
 import mlflow
 import polars as pl
-
 import signalflow as sf
 
 
@@ -23,9 +21,9 @@ def detect_signals(
     """
     detector_name = detector_config.pop("type")
 
-    detector = sf.default_registry.get(
-        component_type=sf.SfComponentType.DETECTOR, name=detector_name
-    )(**detector_config)
+    detector = sf.default_registry.get(component_type=sf.SfComponentType.DETECTOR, name=detector_name)(
+        **detector_config
+    )
     raw_data_view = sf.RawDataView(raw_data)
     signals = detector.run(raw_data_view=raw_data_view, context=None)
 
@@ -60,9 +58,7 @@ def validate_signals(
     val_df = validated_signals.value
 
     if "probability_rise" in val_df.columns:
-        high_conf = val_df.filter(
-            (pl.col("probability_rise") > 0.6) | (pl.col("probability_fall") > 0.6)
-        ).height
+        high_conf = val_df.filter((pl.col("probability_rise") > 0.6) | (pl.col("probability_fall") > 0.6)).height
 
         filter_rate = 1 - (high_conf / val_df.height) if val_df.height > 0 else 0
 

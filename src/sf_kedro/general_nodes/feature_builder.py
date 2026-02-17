@@ -1,9 +1,7 @@
 """Feature extraction utilities."""
 
-
 import mlflow
 import polars as pl
-
 import signalflow as sf
 
 
@@ -24,9 +22,7 @@ def create_feature_set(feature_configs: list[dict]) -> sf.feature.FeaturePipelin
         if extractor_name and "custom" in extractor_name:
             continue
 
-        extractor_type = sf.default_registry.get(
-            component_type=sf.SfComponentType.FEATURE, name=extractor_name
-        )
+        extractor_type = sf.default_registry.get(component_type=sf.SfComponentType.FEATURE, name=extractor_name)
 
         extractor = extractor_type(**config)
         extractors.append(extractor)
@@ -55,9 +51,7 @@ def extract_validation_features(
     raw_data_view = sf.RawDataView(raw_data)
     features_df = feature_set.extract(raw_data_view)
 
-    feature_cols = [
-        col for col in features_df.columns if col not in ["timestamp", "pair"]
-    ]
+    feature_cols = [col for col in features_df.columns if col not in ["timestamp", "pair"]]
 
     mlflow.log_params(
         {
