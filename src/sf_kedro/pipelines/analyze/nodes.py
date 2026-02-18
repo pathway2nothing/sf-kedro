@@ -262,10 +262,7 @@ def save_analysis_report(
     # Save feature analysis
     if feature_results:
         feature_path = output_dir / "feature_analysis.json"
-        serializable_features = {
-            k: v for k, v in feature_results.items()
-            if k not in ["columns", "numeric_columns"]
-        }
+        serializable_features = {k: v for k, v in feature_results.items() if k not in ["columns", "numeric_columns"]}
         serializable_features["n_columns"] = feature_results.get("n_columns", 0)
 
         with open(feature_path, "w") as f:
@@ -290,10 +287,10 @@ def save_analysis_report(
         logger.info(f"  Numeric cols:    {len(feature_results.get('numeric_columns', []))}")
 
     if signal_results:
-        n_signals = signal_results.get('n_signals', 0)
-        signals_per_day = signal_results.get('signals_per_day', 0)
-        type_counts = signal_results.get('type_counts', {})
-        pair_counts = signal_results.get('pair_counts', {})
+        n_signals = signal_results.get("n_signals", 0)
+        signals_per_day = signal_results.get("signals_per_day", 0)
+        type_counts = signal_results.get("type_counts", {})
+        pair_counts = signal_results.get("pair_counts", {})
 
         logger.info(f"  Total signals:   {n_signals:,}")
         logger.info(f"  Signals/day:     {signals_per_day:.1f}")
@@ -328,7 +325,7 @@ def _send_telegram_notification(
         message = f"""
 📊 <b>SignalFlow Analysis Complete</b>
 
-🔍 Flow: {config.get('flow_name', config['flow_id'])}
+🔍 Flow: {config.get("flow_name", config["flow_id"])}
 """
         if feature_results:
             message += f"📈 Features: {feature_results.get('n_columns', 0)} columns\n"

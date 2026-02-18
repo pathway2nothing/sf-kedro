@@ -137,11 +137,7 @@ def _optimize_detector(
                 params[name] = trial.suggest_float(name, space["low"], space["high"], log=True)
 
         # Ensure slow_period > fast_period for SMA cross
-        if (
-            "fast_period" in params
-            and "slow_period" in params
-            and params["slow_period"] <= params["fast_period"]
-        ):
+        if "fast_period" in params and "slow_period" in params and params["slow_period"] <= params["fast_period"]:
             return float("-inf")
 
         try:
@@ -163,9 +159,7 @@ def _optimize_detector(
             label_col = labeling_config.get("out_col", "label")
             if label_col in labeled.columns:
                 # Count valid signals (RISE or FALL, not NONE)
-                valid_signals = labeled.filter(
-                    (labeled[label_col] == 1) | (labeled[label_col] == 2)
-                ).height
+                valid_signals = labeled.filter((labeled[label_col] == 1) | (labeled[label_col] == 2)).height
                 total_signals = labeled.height
                 if total_signals > 0:
                     return valid_signals / total_signals  # Signal validity ratio
@@ -254,14 +248,10 @@ def _optimize_strategy(
                     for filter_config in rule_config.pop("entry_filters"):
                         filter_config = filter_config.copy()
                         filter_type = filter_config.pop("type")
-                        filter_cls = sf.get_component(
-                            type=sf.SfComponentType.STRATEGY_ENTRY_RULE, name=filter_type
-                        )
+                        filter_cls = sf.get_component(type=sf.SfComponentType.STRATEGY_ENTRY_RULE, name=filter_type)
                         filters.append(filter_cls(**filter_config))
                     rule_config["entry_filters"] = filters
-                rule_cls = sf.get_component(
-                    type=sf.SfComponentType.STRATEGY_ENTRY_RULE, name=rule_type
-                )
+                rule_cls = sf.get_component(type=sf.SfComponentType.STRATEGY_ENTRY_RULE, name=rule_type)
                 entry_rules.append(rule_cls(**rule_config))
 
             # Build exit rules with sampled params
@@ -367,7 +357,7 @@ def _send_telegram_notification(telegram_config: dict, config: dict, results: di
         message = f"""
 🎯 <b>SignalFlow Optimization Complete</b>
 
-🔍 Flow: {config.get('flow_name', config['flow_id'])}
+🔍 Flow: {config.get("flow_name", config["flow_id"])}
 📊 Level: {level}
 🏆 Best value: {best_value:.4f}
 📝 Best params:

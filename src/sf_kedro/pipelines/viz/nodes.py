@@ -94,12 +94,14 @@ def _generate_mermaid_from_flow(flow) -> str:
             lines.append(f"    {dep.source} --> {dep.target}")
 
     # Add styling
-    lines.extend([
-        "",
-        "    classDef loader fill:#e1f5fe,stroke:#01579b",
-        "    classDef detector fill:#fff3e0,stroke:#e65100",
-        "    classDef strategy fill:#e8f5e9,stroke:#1b5e20",
-    ])
+    lines.extend(
+        [
+            "",
+            "    classDef loader fill:#e1f5fe,stroke:#01579b",
+            "    classDef detector fill:#fff3e0,stroke:#e65100",
+            "    classDef strategy fill:#e8f5e9,stroke:#1b5e20",
+        ]
+    )
 
     # Apply classes
     for node_id, node in flow.nodes.items():

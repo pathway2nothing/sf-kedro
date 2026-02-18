@@ -239,16 +239,18 @@ def config_to_flow(config: dict[str, Any]) -> Flow:
         "config": strategy_node_config,
     }
 
-    return Flow.from_dict({
-        "id": flow_id,
-        "name": config.get("flow_name", flow_id),
-        "nodes": nodes,
-        "config": {
-            "capital": config.get("capital", 10000.0),
-            "fee": config.get("fee", 0.001),
-            "slippage": config.get("slippage", 0.0),
-        },
-    })
+    return Flow.from_dict(
+        {
+            "id": flow_id,
+            "name": config.get("flow_name", flow_id),
+            "nodes": nodes,
+            "config": {
+                "capital": config.get("capital", 10000.0),
+                "fee": config.get("fee", 0.001),
+                "slippage": config.get("slippage", 0.0),
+            },
+        }
+    )
 
 
 # Backward compatibility alias

@@ -273,7 +273,7 @@ def _send_telegram_notification(
         message = f"""
 🎓 <b>SignalFlow Validator Training Complete</b>
 
-🔍 Flow: {config.get('flow_name', config['flow_id'])}
+🔍 Flow: {config.get("flow_name", config["flow_id"])}
 🤖 Validator: {validator_type}
 💾 Model: {model_path.name}
 """

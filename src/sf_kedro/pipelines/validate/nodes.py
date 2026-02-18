@@ -113,9 +113,7 @@ def run_walk_forward(
         test_end_ts = timestamps[min(test_end_idx - 1, total_periods - 1)]
 
         # Get test data
-        test_data = spot_data.filter(
-            (pl.col("timestamp") >= test_start_ts) & (pl.col("timestamp") <= test_end_ts)
-        )
+        test_data = spot_data.filter((pl.col("timestamp") >= test_start_ts) & (pl.col("timestamp") <= test_end_ts))
 
         if test_data.height == 0:
             logger.warning(f"Fold {fold + 1}: No test data")
@@ -137,15 +135,17 @@ def run_walk_forward(
 
         if signals.value.height == 0:
             logger.warning(f"Fold {fold + 1}: No signals detected")
-            fold_results.append({
-                "fold": fold,
-                "train_end": str(train_end_ts),
-                "test_start": str(test_start_ts),
-                "test_end": str(test_end_ts),
-                "n_signals": 0,
-                "final_return": 0.0,
-                "total_trades": 0,
-            })
+            fold_results.append(
+                {
+                    "fold": fold,
+                    "train_end": str(train_end_ts),
+                    "test_start": str(test_start_ts),
+                    "test_end": str(test_end_ts),
+                    "n_signals": 0,
+                    "final_return": 0.0,
+                    "total_trades": 0,
+                }
+            )
             continue
 
         # Run backtest on test period
@@ -163,19 +163,21 @@ def run_walk_forward(
             fold_result["n_signals"] = signals.value.height
             fold_results.append(fold_result)
 
-            ret = fold_result.get('final_return', 0) * 100
-            trades = fold_result.get('total_trades', 0)
+            ret = fold_result.get("final_return", 0) * 100
+            trades = fold_result.get("total_trades", 0)
             logger.info(f"Fold {fold + 1}: Return={ret:.2f}%, Trades={trades}")
 
         except Exception as e:
             logger.error(f"Fold {fold + 1} failed: {e}")
-            fold_results.append({
-                "fold": fold,
-                "train_end": str(train_end_ts),
-                "test_start": str(test_start_ts),
-                "test_end": str(test_end_ts),
-                "error": str(e),
-            })
+            fold_results.append(
+                {
+                    "fold": fold,
+                    "train_end": str(train_end_ts),
+                    "test_start": str(test_start_ts),
+                    "test_end": str(test_end_ts),
+                    "error": str(e),
+                }
+            )
 
     # Calculate aggregate metrics
     valid_folds = [f for f in fold_results if "final_return" in f]
@@ -300,10 +302,10 @@ def save_validation_report(
     logger.success(f"Walk-Forward Validation: {config.get('flow_name', config['flow_id'])}")
     logger.info("-" * 50)
 
-    n_folds = results.get('n_folds', 0)
-    valid_folds = results.get('valid_folds', 0)
-    avg_return = results.get('avg_return', 0)
-    total_trades = results.get('total_trades', 0)
+    n_folds = results.get("n_folds", 0)
+    valid_folds = results.get("valid_folds", 0)
+    avg_return = results.get("avg_return", 0)
+    total_trades = results.get("total_trades", 0)
 
     logger.info(f"  Valid folds:     {valid_folds}/{n_folds}")
     avg_ret_pct = avg_return * 100
@@ -312,13 +314,13 @@ def save_validation_report(
     logger.info(f"  Total trades:    {total_trades}")
 
     # Log per-fold results
-    folds = results.get('folds', [])
+    folds = results.get("folds", [])
     if folds:
         logger.info("  Per-fold results:")
         for fold_data in folds:
-            fold_num = fold_data.get('fold', 0) + 1
-            fold_ret = fold_data.get('final_return', 0) * 100
-            fold_trades = fold_data.get('total_trades', 0)
+            fold_num = fold_data.get("fold", 0) + 1
+            fold_ret = fold_data.get("final_return", 0) * 100
+            fold_trades = fold_data.get("total_trades", 0)
             fold_emoji = "📈" if fold_ret > 0 else "📉" if fold_ret < 0 else "➡️"
             logger.info(f"    Fold {fold_num}: {fold_emoji} {fold_ret:+.2f}% ({fold_trades} trades)")
 
@@ -339,10 +341,10 @@ def _send_telegram_notification(telegram_config: dict, config: dict, results: di
         message = f"""
 ✅ <b>SignalFlow Walk-Forward Validation Complete</b>
 
-🔍 Flow: {config.get('flow_name', config['flow_id'])}
-📊 Folds: {results.get('valid_folds', 0)}/{results.get('n_folds', 0)} valid
-📈 Avg Return: {results.get('avg_return', 0) * 100:.2f}%
-📊 Total Trades: {results.get('total_trades', 0)}
+🔍 Flow: {config.get("flow_name", config["flow_id"])}
+📊 Folds: {results.get("valid_folds", 0)}/{results.get("n_folds", 0)} valid
+📈 Avg Return: {results.get("avg_return", 0) * 100:.2f}%
+📊 Total Trades: {results.get("total_trades", 0)}
 """
         send_message_to_telegram(
             message=message,

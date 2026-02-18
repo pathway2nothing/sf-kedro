@@ -210,7 +210,7 @@ def run_flow_backtest(
     if "final_equity" in results:
         logger.info(f"  Final Equity:    ${results['final_equity']:,.2f}")
     if "final_return" in results:
-        ret_pct = results['final_return'] * 100
+        ret_pct = results["final_return"] * 100
         emoji = "📈" if ret_pct > 0 else "📉" if ret_pct < 0 else "➡️"
         logger.info(f"  Total Return:    {emoji} {ret_pct:+.2f}%")
     logger.info(f"  Trades Executed: {results.get('total_trades', 0)}")
@@ -288,10 +288,10 @@ def save_flow_plots(
             message = f"""
 📊 <b>SignalFlow Backtest Complete</b>
 
-🔍 Flow: {metrics.get('flow_name', config['flow_id'])}
-💰 Final Equity: ${metrics.get('final_equity', 0):.2f}
-📈 Return: {metrics.get('final_return', 0) * 100:.2f}%
-📊 Trades: {metrics.get('total_trades', 0)}
+🔍 Flow: {metrics.get("flow_name", config["flow_id"])}
+💰 Final Equity: ${metrics.get("final_equity", 0):.2f}
+📈 Return: {metrics.get("final_return", 0) * 100:.2f}%
+📊 Trades: {metrics.get("total_trades", 0)}
 """
             send_message_to_telegram(
                 message=message,

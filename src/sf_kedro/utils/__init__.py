@@ -8,6 +8,7 @@ except ImportError:
     def send_message_to_telegram(*args, **kwargs):
         raise ImportError("pyTelegramBotAPI is not installed. Install it with: pip install pyTelegramBotAPI")
 
+
 from .detection import run_detection, run_detection_with_detector
 
 
