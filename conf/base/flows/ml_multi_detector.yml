@@ -1,0 +1,157 @@
+# Multi-Detector ML Strategy with Validator Training
+# Run: kedro run --pipeline=train --params='flow_id=ml_multi_detector'
+# Then: kedro run --pipeline=backtest --params='flow_id=ml_multi_detector'
+
+flow_id: ml_multi_detector
+flow_name: "Multi-Detector ML Strategy"
+description: |
+  Complex strategy with multiple detectors:
+  - Primary SMA cross detector (used in strategy)
+  - RSI momentum detector (training_only, for validator features)
+  - Validator trained on both detector signals
+  - Strategy receives validated signals from primary detector
+
+# Data config
+data:
+  pairs:
+    - BTCUSDT
+    - ETHUSDT
+    - SOLUSDT
+    - BNBUSDT
+  timeframe: "1h"
+  start: "2023-01-01"
+  end: "2024-01-01"
+
+# Feature extraction
+features:
+  - name: "ta/sma"
+    period: 20
+  - name: "ta/sma"
+    period: 50
+  - name: "ta/rsi"
+    period: 14
+  - name: "ta/atr"
+    period: 14
+  - name: "ta/bbands"
+    period: 20
+    std: 2.0
+
+# Primary detector - signals go to strategy
+detectors:
+  - id: trend_detector
+    type: "example/sma_cross"
+    fast_period: 60
+    slow_period: 720
+    price_col: "close"
+
+  # Secondary detector - only for validator training
+  - id: momentum_detector
+    type: "rsi_momentum"
+    period: 14
+    overbought: 70
+    oversold: 30
+    training_only: true  # Not passed to strategy
+
+# Labeling config
+labeler:
+  type: "fixed_horizon"
+  horizon: 24
+  threshold: 0.01  # 1% price move for positive label
+  price_col: "close"
+
+# Validator config - trains on both detectors
+validator:
+  type: "lightgbm"
+  n_estimators: 200
+  max_depth: 8
+  learning_rate: 0.05
+  min_child_samples: 20
+  subsample: 0.8
+  colsample_bytree: 0.8
+
+  # Training config
+  train_split: 0.7
+  validation_split: 0.15
+  test_split: 0.15
+
+  # Feature columns from both detectors
+  feature_cols:
+    - sma_20
+    - sma_50
+    - rsi_14
+    - atr_14
+    - bb_upper
+    - bb_lower
+    - bb_width
+    - trend_signal
+    - momentum_signal
+
+# Strategy config
+strategy:
+  strategy_id: "ml_multi_detector"
+
+  # Signal reconciliation from multiple sources
+  signal_reconciliation: weighted
+  signal_weights:
+    trend_detector: 0.6
+    validator: 0.4
+
+  entry_rules:
+    - type: "signal"
+      base_position_size: 150.0
+      max_positions_per_pair: 3
+      max_total_positions: 12
+      min_probability: 0.65
+      use_probability_sizing: true
+
+      entry_filters:
+        - type: "price_distance_filter"
+          min_distance_pct: 0.025
+          direction_aware: true
+        - type: "volatility_filter"
+          min_atr_pct: 0.005
+          max_atr_pct: 0.05
+        - type: "trend_filter"
+          require_trend_alignment: true
+
+    # Secondary entry rule - momentum-based
+    - type: "momentum"
+      min_momentum: 0.7
+      base_position_size: 100.0
+      max_positions_per_pair: 2
+
+  entry_mode: sequential  # Check rules in order
+
+  exit_rules:
+    - type: "tp_sl"
+      take_profit_pct: 0.025
+      stop_loss_pct: 0.015
+    - type: "trailing_stop"
+      trail_pct: 0.02
+      activation_pct: 0.01
+    - type: "time_based"
+      max_hold_bars: 48
+
+  # Optional: ML model for entry/exit decisions
+  strategy_model:
+    type: "lightgbm_strategy"
+    model_path: "models/strategy_model.pkl"
+  fallback_entry:
+    type: "signal"
+  fallback_exit:
+    type: "tp_sl"
+
+  metrics:
+    - type: "total_return"
+    - type: "win_rate"
+    - type: "sharpe_ratio"
+    - type: "sortino_ratio"
+    - type: "max_drawdown"
+    - type: "profit_factor"
+    - type: "avg_trade_duration"
+    - type: "trades_per_day"
+
+# Global config
+capital: 50000.0
+fee: 0.001
+slippage: 0.0005

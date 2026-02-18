@@ -107,6 +107,13 @@ def config_to_dag(config: dict[str, Any]) -> FlowDAG:
     Transforms the chain-style flow config (detector → strategy)
     into a DAG with explicit nodes and edges.
 
+    Supports:
+    - Single detector (detector: {...}) or multiple detectors (detectors: [...])
+    - training_only flag for detectors used only in validator training
+    - Features list (features: [...])
+    - Labeler (labeler: {...} or labeling: {...})
+    - Validator with ML model config
+
     Args:
         config: Flow configuration dictionary
 
@@ -124,43 +131,55 @@ def config_to_dag(config: dict[str, Any]) -> FlowDAG:
 
     # Data loader node
     data_config = config.get("data", {})
+    store_config = data_config.get("store", {})
     nodes["loader"] = {
         "type": "data/loader",
-        "name": data_config.get("store", {}).get("type", "duckdb"),
+        "name": store_config.get("type", "duckdb") + "/" + data_config.get("data_type", "spot"),
         "config": {
             "pairs": data_config.get("pairs", ["BTCUSDT"]),
             "timeframe": data_config.get("timeframe", "1h"),
-            **data_config.get("store", {}),
-            **data_config.get("period", {}),
+            "start": data_config.get("start"),
+            "end": data_config.get("end"),
+            **{k: v for k, v in store_config.items() if k != "type"},
         },
     }
+    # Remove None values
+    nodes["loader"]["config"] = {k: v for k, v in nodes["loader"]["config"].items() if v is not None}
 
-    # Detector node
-    detector_config = config.get("detector")
-    if detector_config:
-        detector_type = detector_config.get("type", "")
-        detector_params = {k: v for k, v in detector_config.items() if k != "type"}
-        nodes["detector"] = {
+    # Feature nodes
+    features = config.get("features", [])
+    for i, feat in enumerate(features):
+        feat_name = feat.get("name", feat.get("type", "unknown"))
+        feat_params = {k: v for k, v in feat.items() if k not in ("name", "type")}
+        nodes[f"feature_{i}"] = {
+            "type": "feature",
+            "name": feat_name,
+            "config": feat_params,
+        }
+
+    # Detector node(s) - support both single and multiple
+    detectors = config.get("detectors", [])
+    if not detectors:
+        # Legacy single detector format
+        detector_config = config.get("detector")
+        if detector_config:
+            detectors = [detector_config]
+
+    for i, det in enumerate(detectors):
+        det_id = det.get("id", f"detector_{i}" if len(detectors) > 1 else "detector")
+        det_type = det.get("type", "")
+        det_params = {k: v for k, v in det.items() if k not in ("id", "type", "training_only")}
+        nodes[det_id] = {
             "type": "signals/detector",
-            "name": detector_type,
-            "config": detector_params,
+            "name": det_type,
+            "config": det_params,
+            "training_only": det.get("training_only", False),
         }
 
-    # Validator node (if present)
-    validator_config = config.get("validator")
-    if validator_config:
-        validator_type = validator_config.get("type", "")
-        validator_params = {k: v for k, v in validator_config.items() if k != "type"}
-        nodes["validator"] = {
-            "type": "signals/validator",
-            "name": validator_type,
-            "config": validator_params,
-        }
-
-    # Labeler node (if present)
-    labeling_config = config.get("labeling")
+    # Labeler node (if present) - support both keys
+    labeling_config = config.get("labeler") or config.get("labeling")
     if labeling_config:
-        labeler_type = labeling_config.get("type", "")
+        labeler_type = labeling_config.get("type", "fixed_horizon")
         labeler_params = {k: v for k, v in labeling_config.items() if k != "type"}
         nodes["labeler"] = {
             "type": "signals/labeler",
@@ -168,18 +187,41 @@ def config_to_dag(config: dict[str, Any]) -> FlowDAG:
             "config": labeler_params,
         }
 
+    # Validator node (if present)
+    validator_config = config.get("validator")
+    if validator_config:
+        validator_type = validator_config.get("type", "lightgbm")
+        validator_params = {k: v for k, v in validator_config.items() if k != "type"}
+        nodes["validator"] = {
+            "type": "signals/validator",
+            "name": validator_type,
+            "config": validator_params,
+        }
+
     # Strategy node
     strategy_config = config.get("strategy", {})
+    strategy_node_config = {
+        "entry_rules": strategy_config.get("entry_rules", []),
+        "exit_rules": strategy_config.get("exit_rules", []),
+        "entry_filters": _extract_entry_filters(strategy_config),
+        "metrics": strategy_config.get("metrics", []),
+        "signal_reconciliation": strategy_config.get("signal_reconciliation", "any"),
+        "entry_mode": strategy_config.get("entry_mode", "sequential"),
+    }
+
+    # Optional strategy model with fallbacks
+    if strategy_config.get("strategy_model"):
+        strategy_node_config["strategy_model"] = strategy_config["strategy_model"]
+    if strategy_config.get("fallback_entry"):
+        strategy_node_config["fallback_entry"] = strategy_config["fallback_entry"]
+    if strategy_config.get("fallback_exit"):
+        strategy_node_config["fallback_exit"] = strategy_config["fallback_exit"]
+    if strategy_config.get("signal_weights"):
+        strategy_node_config["signal_weights"] = strategy_config["signal_weights"]
+
     nodes["strategy"] = {
         "type": "strategy",
-        "config": {
-            "entry_rules": strategy_config.get("entry_rules", []),
-            "exit_rules": strategy_config.get("exit_rules", []),
-            "entry_filters": _extract_entry_filters(strategy_config),
-            "metrics": strategy_config.get("metrics", []),
-            "signal_reconciliation": strategy_config.get("signal_reconciliation", "any"),
-            "entry_mode": strategy_config.get("entry_mode", "sequential"),
-        },
+        "config": strategy_node_config,
     }
 
     return FlowDAG.from_dict({
@@ -189,6 +231,7 @@ def config_to_dag(config: dict[str, Any]) -> FlowDAG:
         "config": {
             "capital": config.get("capital", 10000.0),
             "fee": config.get("fee", 0.001),
+            "slippage": config.get("slippage", 0.0),
         },
     })
 
