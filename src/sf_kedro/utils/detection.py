@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import polars as pl
 import signalflow as sf
 
 

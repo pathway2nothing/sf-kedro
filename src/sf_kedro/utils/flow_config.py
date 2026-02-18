@@ -27,36 +27,32 @@ from signalflow.config import (
     # New names
     Artifact,
     Dependency,
-    Flow,
     # Backward compatibility
     Edge,
-    FlowConfig,
-    FlowDAG,
     # Other
     EntryMode,
+    Flow,
+    FlowConfig,
+    FlowDAG,
     Node,
     SignalReconciliation,
     StrategySubgraph,
     deep_merge,
     load_yaml,
 )
-from signalflow.config.loader import _resolve_env_vars, get_flow_info
+from signalflow.config.loader import get_flow_info
 
 __all__ = [
-    # Flow classes (new names)
     "Artifact",
     "Dependency",
-    "Flow",
-    # Backward compatibility
     "Edge",
-    "FlowDAG",
-    # Other classes
     "EntryMode",
+    "Flow",
     "FlowConfig",
+    "FlowDAG",
     "Node",
     "SignalReconciliation",
     "StrategySubgraph",
-    # Functions
     "config_to_dag",
     "config_to_flow",
     "deep_merge",

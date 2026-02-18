@@ -11,10 +11,9 @@ except ImportError:
 
 from .detection import run_detection, run_detection_with_detector
 
-
 __all__ = [
-    "send_message_to_telegram",
-    "send_plots_to_telegram",
     "run_detection",
     "run_detection_with_detector",
+    "send_message_to_telegram",
+    "send_plots_to_telegram",
 ]
