@@ -6,14 +6,15 @@ All new code should use signalflow.config directly.
 This module provides sf-kedro specific defaults (conf path relative to sf-kedro).
 
 Example:
-    >>> from sf_kedro.utils.flow_config import load_flow_config, load_flow_dag
+    >>> from sf_kedro.utils.flow_config import load_flow_config, load_flow
     >>>
     >>> # Load as dict (legacy)
     >>> config = load_flow_config("grid_sma")
     >>>
-    >>> # Load as DAG (new)
-    >>> dag = load_flow_dag("grid_sma")
-    >>> dag.get_execution_plan()
+    >>> # Load as Flow (DAG)
+    >>> flow = load_flow("grid_sma")
+    >>> flow.compile()  # Resolve dependencies
+    >>> flow.plan()     # Get execution order
 """
 
 from __future__ import annotations
@@ -23,11 +24,17 @@ from typing import Any
 
 # Re-export core utilities from signalflow.config
 from signalflow.config import (
+    # New names
+    Artifact,
+    Dependency,
+    Flow,
+    # Backward compatibility
+    Edge,
     FlowConfig,
     FlowDAG,
-    Node,
-    Edge,
+    # Other
     EntryMode,
+    Node,
     SignalReconciliation,
     StrategySubgraph,
     deep_merge,
@@ -36,19 +43,26 @@ from signalflow.config import (
 from signalflow.config.loader import _resolve_env_vars, get_flow_info
 
 __all__ = [
-    # DAG classes
+    # Flow classes (new names)
+    "Artifact",
+    "Dependency",
+    "Flow",
+    # Backward compatibility
     "Edge",
+    "FlowDAG",
+    # Other classes
     "EntryMode",
     "FlowConfig",
-    "FlowDAG",
     "Node",
     "SignalReconciliation",
     "StrategySubgraph",
     # Functions
     "config_to_dag",
+    "config_to_flow",
     "deep_merge",
     "get_flow_info",
     "list_flows",
+    "load_flow",
     "load_flow_config",
     "load_flow_dag",
     "load_yaml",
@@ -101,11 +115,11 @@ def list_flows(conf_path: Path | str | None = None) -> list[str]:
     return sf_list_flows(conf_path)
 
 
-def config_to_dag(config: dict[str, Any]) -> FlowDAG:
-    """Convert a flow config dict to a FlowDAG.
+def config_to_flow(config: dict[str, Any]) -> Flow:
+    """Convert a flow config dict to a Flow.
 
     Transforms the chain-style flow config (detector → strategy)
-    into a DAG with explicit nodes and edges.
+    into a DAG with explicit nodes and dependencies.
 
     Supports:
     - Single detector (detector: {...}) or multiple detectors (detectors: [...])
@@ -118,12 +132,13 @@ def config_to_dag(config: dict[str, Any]) -> FlowDAG:
         config: Flow configuration dictionary
 
     Returns:
-        FlowDAG with nodes and inferred edges
+        Flow with nodes and inferred dependencies
 
     Example:
         >>> config = load_flow_config("grid_sma")
-        >>> dag = config_to_dag(config)
-        >>> dag.get_execution_plan()
+        >>> flow = config_to_flow(config)
+        >>> flow.compile()
+        >>> flow.plan()
     """
     nodes: dict[str, dict[str, Any]] = {}
 
@@ -224,7 +239,7 @@ def config_to_dag(config: dict[str, Any]) -> FlowDAG:
         "config": strategy_node_config,
     }
 
-    return FlowDAG.from_dict({
+    return Flow.from_dict({
         "id": flow_id,
         "name": config.get("flow_name", flow_id),
         "nodes": nodes,
@@ -236,6 +251,12 @@ def config_to_dag(config: dict[str, Any]) -> FlowDAG:
     })
 
 
+# Backward compatibility alias
+def config_to_dag(config: dict[str, Any]) -> Flow:
+    """Backward compatibility alias for config_to_flow."""
+    return config_to_flow(config)
+
+
 def _extract_entry_filters(strategy_config: dict[str, Any]) -> list[dict[str, Any]]:
     """Extract entry filters from strategy config."""
     filters = []
@@ -245,24 +266,30 @@ def _extract_entry_filters(strategy_config: dict[str, Any]) -> list[dict[str, An
     return filters
 
 
-def load_flow_dag(flow_id: str, conf_path: Path | str | None = None) -> FlowDAG:
-    """Load flow configuration as a FlowDAG.
+def load_flow(flow_id: str, conf_path: Path | str | None = None) -> Flow:
+    """Load flow configuration as a Flow.
 
-    Loads the flow config and converts it to a DAG structure
-    with explicit nodes and auto-inferred edges.
+    Loads the flow config and converts it to a Flow structure
+    with explicit nodes and auto-inferred dependencies.
 
     Args:
         flow_id: Flow identifier (e.g., 'grid_sma')
         conf_path: Path to conf directory. Defaults to sf-kedro/conf/base
 
     Returns:
-        FlowDAG with nodes and edges
+        Flow with nodes and dependencies
 
     Example:
-        >>> dag = load_flow_dag("grid_sma")
-        >>> print(dag.get_loaders())
-        >>> print(dag.get_detectors())
-        >>> print(dag.topological_sort())
+        >>> flow = load_flow("grid_sma")
+        >>> flow.compile()  # Resolve dependencies
+        >>> flow.plan()     # Get execution order
+        >>> flow.run()      # Execute backtest
     """
     config = load_flow_config(flow_id, conf_path)
-    return config_to_dag(config)
+    return config_to_flow(config)
+
+
+# Backward compatibility alias
+def load_flow_dag(flow_id: str, conf_path: Path | str | None = None) -> Flow:
+    """Backward compatibility alias for load_flow."""
+    return load_flow(flow_id, conf_path)
