@@ -60,3 +60,8 @@ output:
   signals: "data/08_reporting/{flow_id}/signals"
   strategy: "data/08_reporting/{flow_id}/strategy"
   db: "data/07_model_output/strategy_{flow_id}.duckdb"
+
+# === Visualization settings ===
+viz:
+  output_dir: "data/08_reporting/viz"
+  output_format: "html"  # "html" or "mermaid"
