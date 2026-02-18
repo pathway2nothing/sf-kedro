@@ -100,3 +100,41 @@ class TestFlowConfig:
         override = {"b": {"c": 10}, "e": 5}
         result = deep_merge(base, override)
         assert result == {"a": 1, "b": {"c": 10, "d": 3}, "e": 5}
+
+    def test_load_flow_dag(self):
+        """Test loading flow as DAG."""
+        from sf_kedro.utils.flow_config import load_flow_dag
+
+        dag = load_flow_dag("grid_sma")
+        assert dag.id == "grid_sma"
+        assert "loader" in dag.nodes
+        assert "detector" in dag.nodes
+        assert "strategy" in dag.nodes
+
+    def test_config_to_dag(self):
+        """Test converting config to DAG."""
+        from sf_kedro.utils.flow_config import config_to_dag, load_flow_config
+
+        config = load_flow_config("grid_sma")
+        dag = config_to_dag(config)
+
+        # Check nodes
+        assert len(dag.nodes) >= 3  # loader, detector, strategy
+        assert dag.nodes["detector"].name == "example/sma_cross"
+
+        # Check edges were auto-inferred
+        assert len(dag.edges) > 0
+        edge_pairs = [(e.source, e.target) for e in dag.edges]
+        assert ("loader", "detector") in edge_pairs
+
+    def test_dag_execution_plan(self):
+        """Test getting execution plan from DAG."""
+        from sf_kedro.utils.flow_config import load_flow_dag
+
+        dag = load_flow_dag("grid_sma")
+        plan = dag.get_execution_plan()
+
+        # Loader should come before detector
+        node_ids = [p["id"] for p in plan]
+        assert node_ids.index("loader") < node_ids.index("detector")
+        assert node_ids.index("detector") < node_ids.index("strategy")
