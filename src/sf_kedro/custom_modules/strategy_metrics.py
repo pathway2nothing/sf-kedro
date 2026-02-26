@@ -9,7 +9,7 @@ from plotly.subplots import make_subplots
 
 
 @dataclass
-@sf.sf_component(name="result_main", override=True)
+@sf.strategy_metric("result_main", override=True)
 class StrategyMainResult(sf.analytic.StrategyMetric):
     """
     Strategy-level visualization based on results['metrics_df'] (Polars DataFrame).
@@ -259,11 +259,11 @@ from typing import Any  # noqa: E402
 from loguru import logger  # noqa: E402
 from signalflow import RawData  # noqa: E402
 from signalflow.analytic.base import StrategyMetric  # noqa: E402
-from signalflow.core import StrategyState, sf_component  # noqa: E402
+from signalflow.core import StrategyState  # noqa: E402
 
 
 @dataclass
-@sf_component(name="result_pair", override=True)
+@sf.strategy_metric("result_pair", override=True)
 class StrategyPairResult(StrategyMetric):
     """
     Pair visualization:

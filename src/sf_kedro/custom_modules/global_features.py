@@ -3,11 +3,10 @@ from typing import Any, ClassVar
 
 import polars as pl
 import signalflow as sf
-from signalflow import sf_component
 
 
 @dataclass
-@sf_component(name="global/log_return")
+@sf.feature("global/log_return")
 class MarketLogReturnFeature(sf.feature.GlobalFeature):
     """Market log-return (stationary feature)."""
 
